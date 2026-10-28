@@ -18,7 +18,7 @@
       <span class="heart-icon">❤</span>
       <div>
         <h1 class="brand-title">Sistem Pakar Kardiovaskular</h1>
-        <p class="brand-sub">Metode Certainty Factor (CF) · Demo Edukatif</p>
+        <p class="brand-sub">Metode Certainty Factor (CF) · Client-Side Demo Edukatif</p>
       </div>
     </div>
     <nav class="header-nav">
@@ -37,7 +37,7 @@
     <div class="section-hero">
       <div class="hero-badge">Certainty Factor Method</div>
       <h2 class="section-title">Konsultasi Gejala</h2>
-      <p class="section-desc">Pilih tingkat keyakinan Anda untuk setiap gejala yang dirasakan. Sistem akan menghitung nilai CF kombinasi untuk menentukan kemungkinan penyakit kardiovaskular.</p>
+      <p class="section-desc">Pilih tingkat keyakinan Anda untuk setiap gejala yang dirasakan. Sistem akan menghitung nilai CF kombinasi untuk menentukan kemungkinan penyakit kardiovaskular secara instan di peramban Anda.</p>
     </div>
 
     <!-- Confidence legend -->
@@ -54,6 +54,7 @@
 
       <div class="form-actions">
         <button type="button" id="btn-reset" class="btn btn-ghost">↩ Reset Semua</button>
+        <button type="button" id="btn-preset-ok" class="btn btn-outline" title="Isi contoh kasus koroner klasik (Status OK: 95.75%)">📋 Contoh Kasus (OK)</button>
         <button type="button" id="btn-random-fill" class="btn btn-outline">🎲 Isi Otomatis</button>
         <button type="submit" id="btn-diagnose" class="btn btn-primary">🔍 Diagnosa Sekarang</button>
       </div>
@@ -85,7 +86,7 @@
     <div class="section-hero">
       <div class="hero-badge">AI Input Generator</div>
       <h2 class="section-title">Input Otomatis & Simulasi</h2>
-      <p class="section-desc">Hasilkan skenario pasien secara otomatis untuk menguji sistem dan menghasilkan ketidakpastian (uncertainty) pada berbagai kondisi gejala.</p>
+      <p class="section-desc">Hasilkan skenario pasien secara otomatis untuk menguji sistem dan mengevaluasi status diagnosis (OK vs Ambigu) pada berbagai kondisi keyakinan.</p>
     </div>
 
     <!-- Single Simulation -->
@@ -96,10 +97,10 @@
           <label for="sim-mode">Mode Skenario:</label>
           <select id="sim-mode" class="select-input">
             <option value="random">Acak (Random)</option>
-            <option value="focused">Terfokus (Focused)</option>
-            <option value="uncertain">Tidak Pasti (Uncertain)</option>
+            <option value="focused">Terfokus (Focused — Status OK)</option>
+            <option value="uncertain">Tidak Pasti (Uncertain — Ambigu)</option>
             <option value="minimal">Minimal (1-3 gejala)</option>
-            <option value="contradictory">Kontradiktif (Contradictory)</option>
+            <option value="contradictory">Kontradiktif (Contradictory — Ambigu)</option>
           </select>
         </div>
         <div class="input-group">
@@ -111,10 +112,10 @@
 
       <div class="mode-descriptions">
         <div class="mode-desc" data-mode="random"><strong>Acak:</strong> Gejala dipilih secara acak dari semua 29 gejala dengan berbagai tingkat keyakinan.</div>
-        <div class="mode-desc" data-mode="focused"><strong>Terfokus:</strong> Sebagian besar gejala berasal dari satu penyakit target dengan sedikit "noise" dari penyakit lain.</div>
-        <div class="mode-desc" data-mode="uncertain"><strong>Tidak Pasti:</strong> Banyak gejala dilaporkan, namun semua dengan keyakinan rendah (0.2–0.4). Menghasilkan ambiguitas.</div>
+        <div class="mode-desc" data-mode="focused"><strong>Terfokus:</strong> Sebagian besar gejala berasal dari satu penyakit target dengan tingkat keyakinan tinggi (biasanya menghasilkan Status OK).</div>
+        <div class="mode-desc" data-mode="uncertain"><strong>Tidak Pasti:</strong> Banyak gejala dilaporkan, namun semua dengan keyakinan rendah (0.2–0.4). Menghasilkan ambiguitas tinggi.</div>
         <div class="mode-desc" data-mode="minimal"><strong>Minimal:</strong> Hanya 1–3 gejala dilaporkan. Menguji keterbatasan informasi.</div>
-        <div class="mode-desc" data-mode="contradictory"><strong>Kontradiktif:</strong> Gejala dari 2 penyakit berbeda dicampur, menghasilkan diagnosis ambigu.</div>
+        <div class="mode-desc" data-mode="contradictory"><strong>Kontradiktif:</strong> Gejala dari 2 penyakit berbeda dicampur, memicu persaingan antar penyakit (status ambigu).</div>
       </div>
 
       <div id="single-sim-result" class="sim-result-box hidden"></div>
@@ -156,7 +157,7 @@
     <div class="section-hero">
       <div class="hero-badge">Knowledge Base</div>
       <h2 class="section-title">Basis Pengetahuan</h2>
-      <p class="section-desc">Referensi lengkap basis pengetahuan sistem pakar berdasarkan jurnal Ajisari & Prasetyaningrum (2024).</p>
+      <p class="section-desc">Referensi lengkap basis pengetahuan sistem pakar kardiovaskular berdasarkan jurnal Ajisari & Prasetyaningrum (2024).</p>
     </div>
 
     <!-- Disease cards -->

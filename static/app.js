@@ -1,46 +1,412 @@
 /**
- * app.js - Frontend JavaScript
- * Sistem Pakar Kardiovaskular — Certainty Factor
+ * app.js - Frontend & Standalone Certainty Factor Inference Engine
+ * Sistem Pakar Kardiovaskular — 100% Client-Side (GitHub Pages Ready)
+ * Sumber Basis Pengetahuan: Ajisari & Prasetyaningrum (2024)
  */
 
-// ── Constants ────────────────────────────────────────────────
-const API = {
-  knowledgeBase:  "/api/knowledge-base",
-  diagnose:       "/api/diagnose",
-  autoSimulate:   "/api/auto-simulate",
-  batchSimulate:  "/api/batch-simulate",
+// ===============================================================
+// 1. KNOWLEDGE BASE (BASIS PENGETAHUAN LENGKAP)
+// ===============================================================
+
+const USER_LEVELS = [
+  { value: 0.0, label: "Tidak Tahu / Tidak Yakin" },
+  { value: 0.2, label: "Hampir Mungkin" },
+  { value: 0.4, label: "Mungkin" },
+  { value: 0.6, label: "Cukup Yakin" },
+  { value: 0.8, label: "Yakin" },
+  { value: 1.0, label: "Sangat Yakin" },
+];
+
+const DISEASES = {
+  "P01": "Jantung Koroner (Coronary Heart Disease)",
+  "P02": "Gagal Jantung Kongestif (Congestive Heart Failure)",
+  "P03": "Katup Jantung (Heart Valve Disease)",
+  "P04": "Aritmia (Arrhythmia)",
+  "P05": "Jantung Bawaan (Congenital Heart Disease)",
+  "P06": "Pembuluh Darah (Vascular Disease)",
 };
 
-const CF_COLORS = {
-  high:      "var(--success)",
-  moderate:  "var(--accent-light)",
-  low:       "var(--warning)",
-  verylow:   "var(--text-muted)",
+const DISEASE_DESCRIPTIONS = {
+  "P01": "Penyakit yang terjadi akibat penyempitan atau penyumbatan arteri koroner yang memasok darah ke otot jantung.",
+  "P02": "Kondisi di mana jantung tidak dapat memompa darah secara efisien, menyebabkan cairan menumpuk di paru-paru dan jaringan tubuh.",
+  "P03": "Gangguan pada katup jantung yang dapat menyebabkan kebocoran atau penyempitan aliran darah.",
+  "P04": "Gangguan irama jantung yang menyebabkan jantung berdetak terlalu cepat, terlalu lambat, atau tidak teratur.",
+  "P05": "Kelainan struktur jantung yang sudah ada sejak lahir, dapat mempengaruhi dinding, katup, atau pembuluh darah jantung.",
+  "P06": "Penyakit yang mempengaruhi sistem pembuluh darah di luar jantung, termasuk arteri dan vena.",
 };
 
-let knowledgeBase = null;
-let lastBatchData  = null;
+const DISEASE_RECOMMENDATIONS = {
+  "P01": [
+    "Segera konsultasi ke dokter spesialis jantung (kardiolog)",
+    "Lakukan EKG dan tes darah (troponin, enzim jantung)",
+    "Hindari aktivitas fisik berat sementara waktu",
+    "Pantau tekanan darah dan kolesterol secara rutin",
+    "Pertimbangkan perubahan gaya hidup: diet rendah lemak, berhenti merokok",
+  ],
+  "P02": [
+    "Segera periksa ke dokter untuk evaluasi fungsi pompa jantung (ekokardiografi)",
+    "Pantau berat badan harian untuk mendeteksi penumpukan cairan",
+    "Batasi asupan garam dan cairan sesuai rekomendasi dokter",
+    "Minum obat diuretik sesuai resep dokter",
+    "Istirahat cukup dan hindari aktivitas yang melelahkan",
+  ],
+  "P03": [
+    "Lakukan ekokardiografi untuk menilai kondisi katup jantung",
+    "Konsultasi dengan kardiolog atau bedah jantung",
+    "Pantau gejala seperti sesak nafas dan kelelahan",
+    "Hindari infeksi yang dapat memperburuk kondisi (profilaksis antibiotik jika perlu)",
+    "Pertimbangkan intervensi bedah jika diperlukan",
+  ],
+  "P04": [
+    "Pasang monitor Holter (rekam EKG 24 jam) untuk mendiagnosis jenis aritmia",
+    "Hindari kafein, alkohol, dan rokok yang dapat memicu aritmia",
+    "Konsultasi dengan elektrofisiolog jantung",
+    "Pantau denyut nadi secara rutin",
+    "Diskusikan pilihan terapi: obat antiaritmia, ablasi, atau implantasi alat pacu jantung",
+  ],
+  "P05": [
+    "Konsultasi segera dengan dokter spesialis jantung anak",
+    "Lakukan ekokardiografi untuk menilai struktur jantung",
+    "Pantau pertumbuhan dan perkembangan anak",
+    "Pertimbangkan intervensi bedah korektif sesuai anjuran dokter",
+    "Jaga kebersihan dan hindari infeksi saluran nafas",
+  ],
+  "P06": [
+    "Konsultasi dengan dokter spesialis bedah vaskular",
+    "Lakukan USG Doppler untuk menilai aliran darah",
+    "Kontrol faktor risiko: gula darah, tekanan darah, dan kolesterol",
+    "Jaga perawatan kaki: hindari luka dan infeksi",
+    "Berhenti merokok karena dapat memperburuk kondisi pembuluh darah",
+  ],
+};
 
-// ── Init ─────────────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", async () => {
-  await loadKnowledgeBase();
+const SYMPTOMS = {
+  "G01": "Nyeri dada (Chest pain)",
+  "G02": "Keringat dingin (Cold sweat)",
+  "G03": "Nyeri ulu hati (Epigastric pain)",
+  "G04": "Penurunan kesadaran (Reduced consciousness)",
+  "G05": "Denyut nadi lemah (Weak pulse)",
+  "G06": "Sesak nafas (Shortness of breath)",
+  "G07": "Pusing (Dizziness)",
+  "G08": "Mual / muntah (Nausea / vomiting)",
+  "G09": "Kaki bengkak (Swollen legs)",
+  "G10": "Perut membesar (Enlarged abdomen)",
+  "G11": "Sesak saat malam hari (Breathless at night)",
+  "G12": "Posisi tidur 2 bantal (Needs 2 pillows to sleep)",
+  "G13": "Berdebar (Palpitations)",
+  "G14": "Batuk berdarah (Coughing blood)",
+  "G15": "Nadi tidak teraba (Pulse not palpable)",
+  "G16": "Nadi tidak teratur (Irregular pulse)",
+  "G17": "Mudah lelah (Easily fatigued)",
+  "G18": "Bibir membiru (Bluish lips)",
+  "G19": "Bagian bawah kuku membiru (Bluish nail beds)",
+  "G20": "Infeksi saluran nafas berulang (Recurrent respiratory infections)",
+  "G21": "Sulit menyusu pada bayi (Difficulty breastfeeding in infants)",
+  "G22": "Nyeri pada tangan/kaki (Pain in hands/feet)",
+  "G23": "Kaki/tangan memerah (Reddened hands/feet)",
+  "G24": "Kaki/tangan membiru (Bluish hands/feet)",
+  "G25": "Kaki/tangan terasa panas (Hands/feet feel hot)",
+  "G26": "Kaki/tangan terasa dingin (Hands/feet feel cold)",
+  "G27": "Luka kaki/tangan sulit sembuh (Non-healing wounds on hands/feet)",
+  "G28": "Kesemutan kaki/tangan (Tingling in hands/feet)",
+  "G29": "Pandangan kabur (Blurred vision)",
+};
+
+const RULES = {
+  "P01": { "G01": 0.8, "G02": 0.6, "G03": 0.4, "G04": 0.6, "G05": 0.6, "G06": 0.4, "G07": 0.2, "G08": 0.4 },
+  "P02": { "G06": 0.8, "G09": 0.6, "G10": 0.4, "G08": 0.4, "G01": 0.4, "G04": 0.2, "G11": 0.6, "G12": 0.8, "G17": 0.6 },
+  "P03": { "G13": 0.4, "G06": 0.6, "G14": 0.4, "G11": 0.6, "G17": 0.6, "G09": 0.6, "G04": 0.4 },
+  "P04": { "G13": 0.8, "G07": 0.4, "G17": 0.6, "G04": 0.6, "G06": 0.4, "G15": 0.8, "G16": 0.8 },
+  "P05": { "G06": 0.6, "G18": 0.8, "G19": 0.8, "G17": 0.4, "G20": 0.6, "G21": 0.8 },
+  "P06": { "G09": 0.6, "G22": 0.6, "G23": 0.8, "G24": 0.8, "G25": 0.8, "G26": 0.8, "G27": 0.8, "G28": 0.6, "G29": 0.4, "G01": 0.4, "G07": 0.4, "G04": 0.6 },
+};
+
+const knowledgeBase = {
+  diseases: DISEASES,
+  disease_descriptions: DISEASE_DESCRIPTIONS,
+  disease_recommendations: DISEASE_RECOMMENDATIONS,
+  symptoms: SYMPTOMS,
+  rules: RULES,
+  user_levels: USER_LEVELS,
+};
+
+// ===============================================================
+// 2. CERTAINTY FACTOR INFERENCE ENGINE (CLIENT-SIDE)
+// ===============================================================
+
+/**
+ * Rumus kombinasi CF: CF_old + CF_symptom * (1 - CF_old)
+ */
+function combineCF(cfOld, cfNew) {
+  return cfOld + cfNew * (1 - cfOld);
+}
+
+/**
+ * Inferensi Certainty Factor berdasarkan evidence user
+ * @param {Object} evidence - { "G01": 1.0, "G02": 0.8, ... }
+ */
+function diagnoseCF(evidence) {
+  const ranking = [];
+  const trace = {};
+
+  for (const [pid, weights] of Object.entries(RULES)) {
+    let running = 0.0;
+    const steps = [];
+
+    for (const [gid, cfExpert] of Object.entries(weights)) {
+      const cfUser = parseFloat(evidence[gid] || 0.0);
+      if (cfUser <= 0) continue;
+
+      const cfSym = cfUser * cfExpert;
+      running = steps.length === 0 ? cfSym : combineCF(running, cfSym);
+
+      steps.push({
+        symptom_code: gid,
+        symptom_name: SYMPTOMS[gid] || gid,
+        cf_user: cfUser,
+        cf_expert: cfExpert,
+        cf_symptom: cfSym,
+        cf_running: running,
+      });
+    }
+
+    if (steps.length > 0) {
+      ranking.push({ disease_code: pid, cf_value: running });
+      trace[pid] = steps;
+    }
+  }
+
+  ranking.sort((a, b) => b.cf_value - a.cf_value);
+  return { ranking, trace };
+}
+
+/**
+ * Interpretasi verbal hasil diagnosis dan deteksi ambiguitas
+ */
+function interpretDiagnosis(ranking) {
+  if (!ranking || ranking.length === 0) {
+    return "Tidak ada diagnosis: tidak ada gejala yang dilaporkan dengan keyakinan > 0.";
+  }
+
+  const top = ranking[0].cf_value;
+  const pct = top * 100;
+  let level, desc;
+
+  if (pct >= 80) {
+    level = "TINGGI";
+    desc = "Sangat disarankan segera konsultasi dokter.";
+  } else if (pct >= 60) {
+    level = "CUKUP TINGGI";
+    desc = "Disarankan untuk periksa ke dokter.";
+  } else if (pct >= 40) {
+    level = "SEDANG";
+    desc = "Perlu pemantauan lebih lanjut.";
+  } else if (pct >= 20) {
+    level = "RENDAH";
+    desc = "Gejala belum cukup kuat, pantau kondisi Anda.";
+  } else {
+    level = "SANGAT RENDAH";
+    desc = "Keyakinan diagnosis sangat rendah.";
+  }
+
+  let note = `Tingkat kepercayaan: ${level} (${pct.toFixed(1)}%). ${desc}`;
+  if (ranking.length > 1 && (top - ranking[1].cf_value) < 0.10) {
+    note += " AMBIGU: Perbedaan dengan kandidat kedua < 10 poin — diperlukan data gejala lebih lanjut.";
+  }
+  return note;
+}
+
+/**
+ * Format terstruktur untuk UI
+ */
+function diagnoseAsDict(evidence) {
+  const { ranking, trace } = diagnoseCF(evidence);
+  const results = [];
+
+  for (const item of ranking) {
+    const pid = item.disease_code;
+    const cf = item.cf_value;
+    const stepsData = (trace[pid] || []).map(s => ({
+      symptom_code: s.symptom_code,
+      symptom_name: s.symptom_name,
+      cf_user: Number(s.cf_user.toFixed(2)),
+      cf_expert: Number(s.cf_expert.toFixed(2)),
+      cf_symptom: Number(s.cf_symptom.toFixed(4)),
+      cf_running: Number(s.cf_running.toFixed(4)),
+    }));
+
+    results.push({
+      disease_code: pid,
+      disease_name: DISEASES[pid],
+      disease_description: DISEASE_DESCRIPTIONS[pid],
+      recommendations: DISEASE_RECOMMENDATIONS[pid],
+      cf_value: Number(cf.toFixed(4)),
+      cf_percent: Number((cf * 100).toFixed(2)),
+      steps: stepsData,
+    });
+  }
+
+  const topCf = ranking.length > 0 ? ranking[0].cf_value : 0;
+  const isAmbiguous = ranking.length > 1 && (ranking[0].cf_value - ranking[1].cf_value) < 0.10;
+
+  return {
+    results,
+    interpretation: interpretDiagnosis(ranking),
+    top_disease: ranking.length > 0 ? DISEASES[ranking[0].disease_code] : null,
+    top_cf_percent: Number((topCf * 100).toFixed(2)),
+    is_ambiguous: isAmbiguous,
+    evidence_count: Object.values(evidence).filter(v => parseFloat(v) > 0).length,
+  };
+}
+
+// ===============================================================
+// 3. AUTO-SIMULATOR GENERATOR (CLIENT-SIDE)
+// ===============================================================
+
+function createRng(seed) {
+  if (seed === null || seed === undefined || isNaN(seed) || seed === "") {
+    return Math.random;
+  }
+  let s = Math.floor(Number(seed)) >>> 0;
+  return function() {
+    s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function sampleArray(arr, n, rng) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, n);
+}
+
+function choiceArray(arr, rng) {
+  return arr[Math.floor(rng() * arr.length)];
+}
+
+function generateAutoScenario(mode = "random", seed = null) {
+  const rng = createRng(seed);
+  const allSyms = Object.keys(SYMPTOMS);
+  const allCfVals = [0.2, 0.4, 0.6, 0.8, 1.0];
+  const evidence = {};
+  const meta = { mode, seed };
+
+  if (mode === "random") {
+    const n = Math.floor(rng() * 10) + 3; // 3 to 12
+    const chosen = sampleArray(allSyms, n, rng);
+    chosen.forEach(g => {
+      evidence[g] = choiceArray(allCfVals, rng);
+    });
+    meta.description = `Acak: ${n} gejala dipilih secara random`;
+  } else if (mode === "focused") {
+    const diseaseKeys = Object.keys(RULES);
+    const target = choiceArray(diseaseKeys, rng);
+    meta.target_disease = target;
+    meta.target_name = DISEASES[target];
+
+    const targetSyms = Object.keys(RULES[target]);
+    const minCore = Math.max(2, Math.floor(targetSyms.length / 2));
+    const nCore = Math.floor(rng() * (targetSyms.length - minCore + 1)) + minCore;
+    const core = sampleArray(targetSyms, nCore, rng);
+    core.forEach(g => {
+      evidence[g] = choiceArray([0.6, 0.8, 1.0], rng);
+    });
+
+    const noisePool = allSyms.filter(s => !targetSyms.includes(s));
+    const nNoise = Math.floor(rng() * 3) + 1; // 1 to 3
+    const noise = sampleArray(noisePool, Math.min(nNoise, noisePool.length), rng);
+    noise.forEach(g => {
+      evidence[g] = choiceArray([0.2, 0.4], rng);
+    });
+
+    meta.description = `Terfokus pada ${DISEASES[target]} dengan ${nCore} gejala utama + ${noise.length} noise`;
+  } else if (mode === "uncertain") {
+    const n = Math.floor(rng() * 10) + 6; // 6 to 15
+    const chosen = sampleArray(allSyms, n, rng);
+    chosen.forEach(g => {
+      evidence[g] = choiceArray([0.2, 0.4], rng);
+    });
+    meta.description = `Tidak pasti: ${n} gejala dengan keyakinan rendah (0.2–0.4)`;
+  } else if (mode === "minimal") {
+    const n = Math.floor(rng() * 3) + 1; // 1 to 3
+    const chosen = sampleArray(allSyms, n, rng);
+    chosen.forEach(g => {
+      evidence[g] = choiceArray(allCfVals, rng);
+    });
+    meta.description = `Minimal: hanya ${n} gejala dilaporkan`;
+  } else if (mode === "contradictory") {
+    const diseaseKeys = Object.keys(RULES);
+    const picked = sampleArray(diseaseKeys, 2, rng);
+    picked.forEach(d => {
+      const syms = Object.keys(RULES[d]);
+      const n = Math.floor(rng() * (syms.length - 1)) + 2;
+      sampleArray(syms, n, rng).forEach(g => {
+        evidence[g] = choiceArray([0.4, 0.6, 0.8], rng);
+      });
+    });
+    meta.description = `Kontradiktif: gejala dari ${DISEASES[picked[0]]} dan ${DISEASES[picked[1]]}`;
+  }
+
+  return { evidence, meta };
+}
+
+function runBatchSimulations(n = 10) {
+  n = Math.min(Math.max(1, n), 50);
+  const modes = ["random", "focused", "uncertain", "minimal", "contradictory"];
+  const simulations = [];
+
+  for (let i = 0; i < n; i++) {
+    const mode = modes[i % modes.length];
+    const seed = Math.floor(Math.random() * 10000);
+    const { evidence, meta } = generateAutoScenario(mode, seed);
+    const diag = diagnoseAsDict(evidence);
+
+    simulations.push({
+      sim_no: i + 1,
+      mode,
+      meta,
+      evidence,
+      top_disease: diag.top_disease,
+      top_cf_percent: diag.top_cf_percent,
+      is_ambiguous: diag.is_ambiguous,
+      interpretation: diag.interpretation,
+    });
+  }
+
+  const ambiguousCount = simulations.filter(s => s.is_ambiguous).length;
+  const noDiagCount = simulations.filter(s => !s.top_disease).length;
+
+  return {
+    simulations,
+    summary: {
+      total: n,
+      ambiguous: ambiguousCount,
+      ambiguous_pct: Number(((ambiguousCount / n) * 100).toFixed(1)),
+      no_diagnosis: noDiagCount,
+      no_diagnosis_pct: Number(((noDiagCount / n) * 100).toFixed(1)),
+    },
+  };
+}
+
+// ===============================================================
+// 4. FRONTEND UI & INTERACTION CONTROLLER
+// ===============================================================
+
+let lastBatchData = null;
+
+document.addEventListener("DOMContentLoaded", () => {
+  renderLegend();
+  renderSymptomForm();
   setupTabs();
   setupDiagnoseForm();
   setupSimulateTab();
   setupKnowledgeTab();
 });
-
-// ── Load KB from API ─────────────────────────────────────────
-async function loadKnowledgeBase() {
-  try {
-    const res = await fetch(API.knowledgeBase);
-    knowledgeBase = await res.json();
-    renderLegend();
-    renderSymptomForm();
-  } catch (e) {
-    console.error("Gagal memuat knowledge base:", e);
-  }
-}
 
 // ── Tab Navigation ───────────────────────────────────────────
 function setupTabs() {
@@ -57,8 +423,7 @@ function setupTabs() {
       section.classList.remove("hidden");
       section.classList.add("active");
 
-      // Lazy render knowledge tab
-      if (tab === "knowledge" && knowledgeBase) renderKnowledgeTab();
+      if (tab === "knowledge") renderKnowledgeTab();
     });
   });
 }
@@ -66,8 +431,8 @@ function setupTabs() {
 // ── Render CF Legend ─────────────────────────────────────────
 function renderLegend() {
   const grid = document.getElementById("legend-grid");
-  if (!grid || !knowledgeBase) return;
-  grid.innerHTML = knowledgeBase.user_levels.map(({ value, label }) => `
+  if (!grid) return;
+  grid.innerHTML = USER_LEVELS.map(({ value, label }) => `
     <div class="legend-item">
       <span class="legend-val">${value.toFixed(1)}</span>
       <span>${label}</span>
@@ -78,13 +443,12 @@ function renderLegend() {
 // ── Render Symptom Form ──────────────────────────────────────
 function renderSymptomForm() {
   const container = document.getElementById("symptom-container");
-  if (!container || !knowledgeBase) return;
+  if (!container) return;
 
-  const cfLabels = knowledgeBase.user_levels.map(l => l.label);
-  const cfValues = knowledgeBase.user_levels.map(l => l.value);
-  const steps    = cfValues.join(" ");
+  const cfLabels = USER_LEVELS.map(l => l.label);
+  const cfValues = USER_LEVELS.map(l => l.value);
 
-  container.innerHTML = Object.entries(knowledgeBase.symptoms).map(([code, name]) => `
+  container.innerHTML = Object.entries(SYMPTOMS).map(([code, name]) => `
     <div class="symptom-card" id="card-${code}">
       <div class="symptom-header">
         <span class="symptom-code">${code}</span>
@@ -102,40 +466,49 @@ function renderSymptomForm() {
     </div>
   `).join("");
 
-  // Wire sliders
   container.querySelectorAll(".cf-slider").forEach(slider => {
     slider.addEventListener("input", () => updateSlider(slider, cfValues, cfLabels));
-    updateSlider(slider, cfValues, cfLabels); // init
+    updateSlider(slider, cfValues, cfLabels);
   });
 }
 
 function updateSlider(slider, cfValues, cfLabels) {
-  const v    = parseFloat(slider.value);
+  const v = parseFloat(slider.value);
   const code = slider.dataset.code;
-  const pct  = (v / 1.0) * 100;
+  const pct = (v / 1.0) * 100;
 
   slider.style.setProperty("--fill", `${pct}%`);
-  document.getElementById(`val-${code}`).textContent = v.toFixed(1);
+  const valEl = document.getElementById(`val-${code}`);
+  if (valEl) valEl.textContent = v.toFixed(1);
 
-  const idx   = cfValues.indexOf(v);
+  const idx = cfValues.indexOf(v);
   const label = idx >= 0 ? cfLabels[idx] : "";
-  document.getElementById(`lbl-${code}`).textContent = label;
+  const lblEl = document.getElementById(`lbl-${code}`);
+  if (lblEl) lblEl.textContent = label;
 
   const card = document.getElementById(`card-${code}`);
-  if (v > 0) card.classList.add("selected");
-  else        card.classList.remove("selected");
+  if (card) {
+    if (v > 0) card.classList.add("selected");
+    else card.classList.remove("selected");
+  }
 }
 
 // ── Diagnose Form ────────────────────────────────────────────
 function setupDiagnoseForm() {
   const form = document.getElementById("diagnose-form");
-  form.addEventListener("submit", async (e) => {
+  form.addEventListener("submit", (e) => {
     e.preventDefault();
-    await runDiagnosis();
+    runDiagnosis();
   });
 
   document.getElementById("btn-reset").addEventListener("click", resetForm);
   document.getElementById("btn-random-fill").addEventListener("click", randomFill);
+
+  const btnPreset = document.getElementById("btn-preset-ok");
+  if (btnPreset) {
+    btnPreset.addEventListener("click", applyCaseStudyPreset);
+  }
+
   document.getElementById("btn-toggle-trace").addEventListener("click", toggleTrace);
 }
 
@@ -148,7 +521,7 @@ function collectEvidence() {
   return evidence;
 }
 
-async function runDiagnosis() {
+function runDiagnosis() {
   const evidence = collectEvidence();
   if (Object.keys(evidence).length === 0) {
     showToast("Pilih minimal satu gejala dengan keyakinan > 0");
@@ -156,20 +529,17 @@ async function runDiagnosis() {
   }
 
   showLoading(true);
-  try {
-    const res  = await fetch(API.diagnose, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ evidence }),
-    });
-    const data = await res.json();
-    renderResult(data);
-  } catch (err) {
-    console.error(err);
-    showToast("Terjadi kesalahan saat mendiagnosis. Pastikan server berjalan.");
-  } finally {
-    showLoading(false);
-  }
+  setTimeout(() => {
+    try {
+      const data = diagnoseAsDict(evidence);
+      renderResult(data);
+    } catch (err) {
+      console.error(err);
+      showToast("Terjadi kesalahan saat mendiagnosis.");
+    } finally {
+      showLoading(false);
+    }
+  }, 120);
 }
 
 function renderResult(data) {
@@ -177,36 +547,43 @@ function renderResult(data) {
   panel.classList.remove("hidden");
   panel.scrollIntoView({ behavior: "smooth", block: "start" });
 
-  // Badge
   const badge = document.getElementById("result-badge");
-  const pct   = data.top_cf_percent;
+  const pct = data.top_cf_percent;
+
   if (!data.results || data.results.length === 0) {
     badge.textContent = "TIDAK ADA DIAGNOSIS";
-    badge.className   = "result-badge low";
+    badge.className = "result-badge low";
   } else if (data.is_ambiguous) {
     badge.textContent = "⚠ AMBIGU";
-    badge.className   = "result-badge ambiguous";
+    badge.className = "result-badge ambiguous";
+  } else if (pct >= 80) {
+    badge.textContent = `${pct.toFixed(1)}% — STATUS: OK ✔ (TINGGI)`;
+    badge.className = "result-badge high";
   } else if (pct >= 60) {
-    badge.textContent = `${pct.toFixed(1)}% — TINGGI`;
-    badge.className   = "result-badge high";
+    badge.textContent = `${pct.toFixed(1)}% — STATUS: OK ✔ (CUKUP TINGGI)`;
+    badge.className = "result-badge high";
   } else if (pct >= 40) {
-    badge.textContent = `${pct.toFixed(1)}% — SEDANG`;
-    badge.className   = "result-badge moderate";
+    badge.textContent = `${pct.toFixed(1)}% — STATUS: OK ✔ (SEDANG)`;
+    badge.className = "result-badge moderate";
   } else {
     badge.textContent = `${pct.toFixed(1)}% — RENDAH`;
-    badge.className   = "result-badge low";
+    badge.className = "result-badge low";
   }
 
-  // Summary card
   const summary = document.getElementById("result-summary");
   if (!data.results || data.results.length === 0) {
     summary.innerHTML = `
       <div class="top-disease-name">Tidak Ada Diagnosis</div>
-      <div class="disease-desc">Tidak ada gejala yang dilaporkan dengan keyakinan > 0, atau nilai CF terlalu rendah untuk membuat diagnosis.</div>
+      <div class="disease-desc">Tidak ada gejala yang dilaporkan dengan keyakinan > 0.</div>
     `;
   } else {
     const top = data.results[0];
+    const statusNote = data.is_ambiguous
+      ? '<span style="color:var(--warning);font-weight:600;">⚠ Status Ambigu (Perbedaan #1 dan #2 &lt; 10%)</span>'
+      : '<span style="color:var(--success);font-weight:600;">✔ Status OK (Diagnosis Jelas &amp; Tidak Ambigu)</span>';
+
     summary.innerHTML = `
+      <div style="margin-bottom:0.6rem;">${statusNote}</div>
       <div class="top-disease-name">${top.disease_name}</div>
       <div class="disease-desc">${top.disease_description}</div>
       <div class="interp-text">🔍 ${data.interpretation}</div>
@@ -219,7 +596,6 @@ function renderResult(data) {
     `;
   }
 
-  // CF Bars
   const barsEl = document.getElementById("cf-bars");
   barsEl.innerHTML = "";
   if (data.results && data.results.length > 0) {
@@ -238,11 +614,10 @@ function renderResult(data) {
       barsEl.appendChild(item);
       setTimeout(() => {
         item.querySelector(".cf-bar-fill").style.width = `${r.cf_percent}%`;
-      }, 80 + i * 60);
+      }, 50 + i * 40);
     });
   }
 
-  // Store trace data for toggle
   panel.dataset.traceData = JSON.stringify(data.results);
   document.getElementById("trace-table-section").classList.add("hidden");
   document.getElementById("btn-toggle-trace").textContent = "📊 Tampilkan Perhitungan Detail";
@@ -250,8 +625,8 @@ function renderResult(data) {
 
 function toggleTrace() {
   const section = document.getElementById("trace-table-section");
-  const btn     = document.getElementById("btn-toggle-trace");
-  const panel   = document.getElementById("result-panel");
+  const btn = document.getElementById("btn-toggle-trace");
+  const panel = document.getElementById("result-panel");
 
   if (section.classList.contains("hidden")) {
     const results = JSON.parse(panel.dataset.traceData || "[]");
@@ -298,56 +673,57 @@ function toggleTrace() {
 }
 
 function resetForm() {
+  const cfLabels = USER_LEVELS.map(l => l.label);
+  const cfValues = USER_LEVELS.map(l => l.value);
+
   document.querySelectorAll(".cf-slider").forEach(slider => {
     slider.value = 0;
-    updateSlider(slider,
-      knowledgeBase.user_levels.map(l => l.value),
-      knowledgeBase.user_levels.map(l => l.label)
-    );
+    updateSlider(slider, cfValues, cfLabels);
   });
   document.getElementById("result-panel").classList.add("hidden");
 }
 
-async function randomFill() {
-  // Call auto-simulate API with "random" mode then fill sliders
-  try {
-    showLoading(true);
-    const res  = await fetch(API.autoSimulate, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ mode: "random" }),
-    });
-    const data = await res.json();
-    const evidence = data.evidence;
+function applyCaseStudyPreset() {
+  // Skenario studi kasus: Koroner Klasik (Status OK)
+  const caseEvidence = {
+    "G01": 1.0, // Nyeri dada (Sangat Yakin)
+    "G02": 0.8, // Keringat dingin (Yakin)
+    "G03": 0.6, // Nyeri ulu hati (Cukup Yakin)
+    "G05": 0.6, // Denyut nadi lemah (Cukup Yakin)
+    "G08": 0.4, // Mual / muntah (Mungkin)
+  };
 
-    // Reset all first
-    document.querySelectorAll(".cf-slider").forEach(s => {
-      s.value = 0;
-      updateSlider(s,
-        knowledgeBase.user_levels.map(l => l.value),
-        knowledgeBase.user_levels.map(l => l.label)
-      );
-    });
+  resetForm();
+  const cfLabels = USER_LEVELS.map(l => l.label);
+  const cfValues = USER_LEVELS.map(l => l.value);
 
-    // Set selected symptoms
-    Object.entries(evidence).forEach(([code, val]) => {
-      const slider = document.getElementById(`slider-${code}`);
-      if (slider) {
-        slider.value = val;
-        updateSlider(slider,
-          knowledgeBase.user_levels.map(l => l.value),
-          knowledgeBase.user_levels.map(l => l.label)
-        );
-      }
-    });
+  Object.entries(caseEvidence).forEach(([code, val]) => {
+    const slider = document.getElementById(`slider-${code}`);
+    if (slider) {
+      slider.value = val;
+      updateSlider(slider, cfValues, cfLabels);
+    }
+  });
 
-    showToast(`${Object.keys(evidence).length} gejala diisi secara otomatis`);
-  } catch (err) {
-    console.error(err);
-    showToast("Gagal memuat simulasi. Pastikan server berjalan.");
-  } finally {
-    showLoading(false);
-  }
+  showToast("Kasus Tn. Hendra dimuat (Status OK: Jantung Koroner 95.75%)");
+  runDiagnosis();
+}
+
+function randomFill() {
+  resetForm();
+  const { evidence } = generateAutoScenario("random");
+  const cfLabels = USER_LEVELS.map(l => l.label);
+  const cfValues = USER_LEVELS.map(l => l.value);
+
+  Object.entries(evidence).forEach(([code, val]) => {
+    const slider = document.getElementById(`slider-${code}`);
+    if (slider) {
+      slider.value = val;
+      updateSlider(slider, cfValues, cfLabels);
+    }
+  });
+
+  showToast(`${Object.keys(evidence).length} gejala diisi secara otomatis`);
 }
 
 // ── Auto Simulate Tab ─────────────────────────────────────────
@@ -359,33 +735,27 @@ function setupSimulateTab() {
       d.classList.toggle("highlight", d.dataset.mode === mode);
     });
   });
-  modeSelect.dispatchEvent(new Event("change")); // init highlight
+  modeSelect.dispatchEvent(new Event("change"));
 
   document.getElementById("btn-single-sim").addEventListener("click", runSingleSimulation);
   document.getElementById("btn-batch-sim").addEventListener("click", runBatchSimulation);
   document.getElementById("btn-export-csv").addEventListener("click", exportBatchCSV);
 }
 
-async function runSingleSimulation() {
-  const mode  = document.getElementById("sim-mode").value;
+function runSingleSimulation() {
+  const mode = document.getElementById("sim-mode").value;
   const seedV = document.getElementById("sim-seed").value;
-  const seed  = seedV ? parseInt(seedV) : null;
+  const seed = seedV ? parseInt(seedV) : null;
 
   showLoading(true);
-  try {
-    const res  = await fetch(API.autoSimulate, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ mode, seed }),
-    });
-    const data = await res.json();
+  setTimeout(() => {
+    const { evidence, meta } = generateAutoScenario(mode, seed);
+    const diag = diagnoseAsDict(evidence);
 
-    const box   = document.getElementById("single-sim-result");
-    const diag  = data.diagnosis;
-    const top   = diag.results[0];
-    const meta  = data.meta;
+    const box = document.getElementById("single-sim-result");
+    const top = diag.results[0];
 
-    const evTags = Object.entries(data.evidence).map(([k, v]) =>
+    const evTags = Object.entries(evidence).map(([k, v]) =>
       `<span class="ev-tag">${k}=${v.toFixed(1)}</span>`
     ).join("");
 
@@ -393,7 +763,9 @@ async function runSingleSimulation() {
       <div style="margin-top:0.75rem;">
         <strong style="color:var(--text-primary)">${top.disease_name}</strong>
         <span style="font-family:var(--mono);margin-left:0.5rem;color:var(--accent-light)">${top.cf_percent.toFixed(2)}%</span>
-        ${diag.is_ambiguous ? '<span class="badge-ambiguous" style="margin-left:0.5rem">⚠ Ambigu</span>' : ''}
+        ${diag.is_ambiguous
+          ? '<span class="badge-ambiguous" style="margin-left:0.5rem">⚠ Ambigu</span>'
+          : '<span class="badge-ok" style="margin-left:0.5rem">✔ OK</span>'}
       </div>
       <div style="margin-top:0.4rem;font-size:0.82rem;color:var(--text-secondary)">${diag.interpretation}</div>
     ` : `<div style="color:var(--danger);margin-top:0.75rem">Tidak ada diagnosis (semua CF = 0)</div>`;
@@ -408,38 +780,25 @@ async function runSingleSimulation() {
       ${topDisease}
     `;
     box.classList.remove("hidden");
-  } catch (err) {
-    console.error(err);
-    showToast("Gagal menjalankan simulasi.");
-  } finally {
     showLoading(false);
-  }
+  }, 100);
 }
 
-async function runBatchSimulation() {
+function runBatchSimulation() {
   const n = parseInt(document.getElementById("batch-n").value) || 10;
   showLoading(true);
-  try {
-    const res  = await fetch(API.batchSimulate, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ n }),
-    });
-    const data = await res.json();
+
+  setTimeout(() => {
+    const data = runBatchSimulations(n);
     lastBatchData = data;
     renderBatchResults(data);
-  } catch (err) {
-    console.error(err);
-    showToast("Gagal menjalankan batch simulasi.");
-  } finally {
     showLoading(false);
-  }
+  }, 150);
 }
 
 function renderBatchResults(data) {
   const { simulations, summary } = data;
 
-  // Summary stats
   const sumEl = document.getElementById("batch-summary");
   sumEl.innerHTML = `
     <div class="summary-stat success">
@@ -457,7 +816,6 @@ function renderBatchResults(data) {
   `;
   sumEl.classList.remove("hidden");
 
-  // Table
   const tbody = document.getElementById("batch-tbody");
   tbody.innerHTML = simulations.map(s => {
     let statusBadge;
@@ -512,19 +870,17 @@ function exportBatchCSV() {
   ];
 
   const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
   a.href = url;
-  a.download = `simulasi_cf_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `simulasi_cf_${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
   showToast("CSV berhasil diunduh");
 }
 
 // ── Knowledge Base Tab ────────────────────────────────────────
-function setupKnowledgeTab() {
-  // Will be rendered when tab is clicked
-}
+function setupKnowledgeTab() {}
 
 function renderKnowledgeTab() {
   renderDiseaseCards();
@@ -533,15 +889,13 @@ function renderKnowledgeTab() {
 
 function renderDiseaseCards() {
   const grid = document.getElementById("disease-cards");
-  if (!grid || !knowledgeBase || grid.innerHTML.trim()) return;
+  if (!grid || grid.innerHTML.trim()) return;
 
-  const { diseases, disease_descriptions, rules } = knowledgeBase;
-
-  grid.innerHTML = Object.entries(diseases).map(([code, name]) => {
-    const ruleSymptoms = Object.entries(rules[code] || {});
+  grid.innerHTML = Object.entries(DISEASES).map(([code, name]) => {
+    const ruleSymptoms = Object.entries(RULES[code] || {});
     const tags = ruleSymptoms.map(([gid, cf]) => {
       const cls = cf >= 0.8 ? "high" : cf >= 0.6 ? "mid" : "";
-      const tooltip = knowledgeBase.symptoms[gid] || gid;
+      const tooltip = SYMPTOMS[gid] || gid;
       return `<span class="dc-sym-tag ${cls}" title="${tooltip}">${gid} (${cf})</span>`;
     }).join("");
 
@@ -549,7 +903,7 @@ function renderDiseaseCards() {
       <div class="disease-card">
         <div class="dc-code">${code}</div>
         <div class="dc-name">${name}</div>
-        <div class="dc-desc">${disease_descriptions[code] || ""}</div>
+        <div class="dc-desc">${DISEASE_DESCRIPTIONS[code] || ""}</div>
         <div class="dc-symptoms">${tags}</div>
       </div>
     `;
@@ -559,35 +913,33 @@ function renderDiseaseCards() {
 function renderRulesTable() {
   const thead = document.getElementById("rules-thead");
   const tbody = document.getElementById("rules-tbody");
-  if (!thead || !tbody || !knowledgeBase || thead.innerHTML.trim()) return;
+  if (!thead || !tbody || thead.innerHTML.trim()) return;
 
-  const { diseases, symptoms, rules } = knowledgeBase;
-  const diseaseCodes = Object.keys(diseases);
-  const symptomCodes = Object.keys(symptoms);
+  const diseaseCodes = Object.keys(DISEASES);
+  const symptomCodes = Object.keys(SYMPTOMS);
 
-  // Header
   thead.innerHTML = `
     <tr>
       <th>Gejala</th>
-      ${diseaseCodes.map(d => `<th title="${diseases[d]}">${d}</th>`).join("")}
+      ${diseaseCodes.map(d => `<th title="${DISEASES[d]}">${d}</th>`).join("")}
     </tr>
   `;
 
-  // Rows
   tbody.innerHTML = symptomCodes.map(gid => {
     const cells = diseaseCodes.map(pid => {
-      const cf = rules[pid]?.[gid];
+      const cf = RULES[pid]?.[gid];
       if (!cf) return `<td class="rules-cell empty">·</td>`;
       const cls = cf >= 0.8 ? "v08" : cf >= 0.6 ? "v06" : cf >= 0.4 ? "v04" : "v02";
       return `<td class="rules-cell ${cls}">${cf}</td>`;
     }).join("");
-    return `<tr><td>${gid} — ${symptoms[gid]}</td>${cells}</tr>`;
+    return `<tr><td>${gid} — ${SYMPTOMS[gid]}</td>${cells}</tr>`;
   }).join("");
 }
 
 // ── Helpers ───────────────────────────────────────────────────
 function showLoading(state) {
-  document.getElementById("loading-overlay").classList.toggle("hidden", !state);
+  const el = document.getElementById("loading-overlay");
+  if (el) el.classList.toggle("hidden", !state);
 }
 
 function showToast(msg, duration = 3000) {

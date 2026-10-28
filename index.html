@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistem Pakar Kardiovaskular — Certainty Factor</title>
+  <meta name="description" content="Sistem Pakar Diagnosa Penyakit Kardiovaskular menggunakan Metode Certainty Factor. Demo edukatif berbasis penelitian Ajisari & Prasetyaningrum (2024)." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ===================== HEADER ===================== -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-brand">
+      <span class="heart-icon">❤</span>
+      <div>
+        <h1 class="brand-title">Sistem Pakar Kardiovaskular</h1>
+        <p class="brand-sub">Metode Certainty Factor (CF) · Client-Side Demo Edukatif</p>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <button class="nav-btn active" data-tab="diagnose" id="nav-diagnose">🩺 Diagnosis</button>
+      <button class="nav-btn" data-tab="simulate" id="nav-simulate">🤖 Auto-Simulasi</button>
+      <button class="nav-btn" data-tab="knowledge" id="nav-knowledge">📚 Basis Pengetahuan</button>
+    </nav>
+  </div>
+</header>
+
+<!-- ===================== MAIN ===================== -->
+<main class="site-main">
+
+  <!-- -------- TAB: DIAGNOSE -------- -->
+  <section id="tab-diagnose" class="tab-section active">
+    <div class="section-hero">
+      <div class="hero-badge">Certainty Factor Method</div>
+      <h2 class="section-title">Konsultasi Gejala</h2>
+      <p class="section-desc">Pilih tingkat keyakinan Anda untuk setiap gejala yang dirasakan. Sistem akan menghitung nilai CF kombinasi untuk menentukan kemungkinan penyakit kardiovaskular secara instan di peramban Anda.</p>
+    </div>
+
+    <!-- Confidence legend -->
+    <div class="cf-legend glass-card">
+      <h3 class="legend-title">Skala Keyakinan Pengguna</h3>
+      <div class="legend-grid" id="legend-grid"></div>
+    </div>
+
+    <!-- Symptom form -->
+    <form id="diagnose-form">
+      <div class="symptom-groups" id="symptom-container">
+        <!-- Populated by JS -->
+      </div>
+
+      <div class="form-actions">
+        <button type="button" id="btn-reset" class="btn btn-ghost">↩ Reset Semua</button>
+        <button type="button" id="btn-preset-ok" class="btn btn-outline" title="Isi contoh kasus koroner klasik (Status OK: 95.75%)">📋 Contoh Kasus (OK)</button>
+        <button type="button" id="btn-random-fill" class="btn btn-outline">🎲 Isi Otomatis</button>
+        <button type="submit" id="btn-diagnose" class="btn btn-primary">🔍 Diagnosa Sekarang</button>
+      </div>
+    </form>
+
+    <!-- Result panel -->
+    <div id="result-panel" class="result-panel hidden">
+      <div class="result-header">
+        <h2 class="result-title">Hasil Diagnosa</h2>
+        <span class="result-badge" id="result-badge"></span>
+      </div>
+
+      <div class="result-summary glass-card" id="result-summary"></div>
+
+      <div class="cf-bar-section">
+        <h3 class="sub-heading">Peringkat Penyakit (CF%)</h3>
+        <div id="cf-bars"></div>
+      </div>
+
+      <div class="detail-toggle-row">
+        <button id="btn-toggle-trace" class="btn btn-outline btn-sm">📊 Tampilkan Perhitungan Detail</button>
+      </div>
+      <div id="trace-table-section" class="hidden"></div>
+    </div>
+  </section>
+
+  <!-- -------- TAB: AUTO SIMULATE -------- -->
+  <section id="tab-simulate" class="tab-section hidden">
+    <div class="section-hero">
+      <div class="hero-badge">AI Input Generator</div>
+      <h2 class="section-title">Input Otomatis & Simulasi</h2>
+      <p class="section-desc">Hasilkan skenario pasien secara otomatis untuk menguji sistem dan mengevaluasi status diagnosis (OK vs Ambigu) pada berbagai kondisi keyakinan.</p>
+    </div>
+
+    <!-- Single Simulation -->
+    <div class="glass-card sim-card">
+      <h3 class="card-title">🎯 Simulasi Tunggal</h3>
+      <div class="sim-controls">
+        <div class="select-group">
+          <label for="sim-mode">Mode Skenario:</label>
+          <select id="sim-mode" class="select-input">
+            <option value="random">Acak (Random)</option>
+            <option value="focused">Terfokus (Focused — Status OK)</option>
+            <option value="uncertain">Tidak Pasti (Uncertain — Ambigu)</option>
+            <option value="minimal">Minimal (1-3 gejala)</option>
+            <option value="contradictory">Kontradiktif (Contradictory — Ambigu)</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="sim-seed">Seed (opsional):</label>
+          <input type="number" id="sim-seed" class="text-input" placeholder="Kosongkan = acak" min="0" max="9999" />
+        </div>
+        <button id="btn-single-sim" class="btn btn-primary">⚡ Jalankan Simulasi</button>
+      </div>
+
+      <div class="mode-descriptions">
+        <div class="mode-desc" data-mode="random"><strong>Acak:</strong> Gejala dipilih secara acak dari semua 29 gejala dengan berbagai tingkat keyakinan.</div>
+        <div class="mode-desc" data-mode="focused"><strong>Terfokus:</strong> Sebagian besar gejala berasal dari satu penyakit target dengan tingkat keyakinan tinggi (biasanya menghasilkan Status OK).</div>
+        <div class="mode-desc" data-mode="uncertain"><strong>Tidak Pasti:</strong> Banyak gejala dilaporkan, namun semua dengan keyakinan rendah (0.2–0.4). Menghasilkan ambiguitas tinggi.</div>
+        <div class="mode-desc" data-mode="minimal"><strong>Minimal:</strong> Hanya 1–3 gejala dilaporkan. Menguji keterbatasan informasi.</div>
+        <div class="mode-desc" data-mode="contradictory"><strong>Kontradiktif:</strong> Gejala dari 2 penyakit berbeda dicampur, memicu persaingan antar penyakit (status ambigu).</div>
+      </div>
+
+      <div id="single-sim-result" class="sim-result-box hidden"></div>
+    </div>
+
+    <!-- Batch Simulation -->
+    <div class="glass-card sim-card">
+      <h3 class="card-title">📊 Simulasi Batch</h3>
+      <div class="sim-controls">
+        <div class="input-group">
+          <label for="batch-n">Jumlah Simulasi:</label>
+          <input type="number" id="batch-n" class="text-input" value="10" min="1" max="50" />
+        </div>
+        <button id="btn-batch-sim" class="btn btn-primary">🚀 Jalankan Batch</button>
+        <button id="btn-export-csv" class="btn btn-outline hidden">📥 Export CSV</button>
+      </div>
+
+      <div id="batch-summary" class="batch-summary hidden"></div>
+      <div id="batch-table-wrapper" class="table-wrapper hidden">
+        <table id="batch-table" class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Mode</th>
+              <th>Gejala</th>
+              <th>Diagnosis Teratas</th>
+              <th>CF%</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="batch-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- -------- TAB: KNOWLEDGE BASE -------- -->
+  <section id="tab-knowledge" class="tab-section hidden">
+    <div class="section-hero">
+      <div class="hero-badge">Knowledge Base</div>
+      <h2 class="section-title">Basis Pengetahuan</h2>
+      <p class="section-desc">Referensi lengkap basis pengetahuan sistem pakar kardiovaskular berdasarkan jurnal Ajisari & Prasetyaningrum (2024).</p>
+    </div>
+
+    <!-- Disease cards -->
+    <div class="knowledge-grid" id="disease-cards"></div>
+
+    <!-- Full symptom-disease rules table -->
+    <div class="glass-card" style="margin-top:2rem;">
+      <h3 class="card-title">Tabel Aturan (CF Pakar)</h3>
+      <div class="table-wrapper">
+        <table class="data-table compact" id="rules-table">
+          <thead id="rules-thead"></thead>
+          <tbody id="rules-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===================== DISCLAIMER ===================== -->
+<div class="disclaimer">
+  ⚕️ <strong>Peringatan:</strong> Sistem ini hanya untuk keperluan edukasi dan demonstrasi. Bukan pengganti diagnosis medis profesional. Selalu konsultasikan kondisi kesehatan Anda kepada dokter atau tenaga medis yang berkompeten.
+</div>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="site-footer">
+  <p>Sistem Pakar Kardiovaskular · Metode Certainty Factor</p>
+  <p>Sumber: Ajisari & Prasetyaningrum (2024) — Journal of Computer and Information Systems Ampera, Vol. 5 No. 2</p>
+</footer>
+
+<!-- Loading overlay -->
+<div id="loading-overlay" class="loading-overlay hidden">
+  <div class="loading-spinner"></div>
+  <p>Memproses...</p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
