@@ -54,10 +54,65 @@
       <p>Pilih gejala yang dialami, lalu klik <strong>Diagnosa</strong> untuk melihat hasil analisis Dempster-Shafer.</p>
     </div>
 
+    <!-- ─── PANEL INPUT OTOMATIS ─── -->
+    <div class="auto-input-panel card mb-24">
+      <div class="card-title"><div class="icon">⚡</div>Input Otomatis</div>
+
+      <div class="auto-input-row">
+
+        <!-- Kolom 1: Input Acak Murni -->
+        <div class="auto-col">
+          <div class="auto-col-label">🎲 Acak Murni</div>
+          <p class="text-sm text-muted">Pilih gejala secara acak dari 35 gejala yang tersedia.</p>
+          <div class="auto-controls">
+            <label class="text-sm text-muted">Jumlah gejala:</label>
+            <input type="number" id="random-n" value="6" min="1" max="35" class="num-input">
+            <button class="btn btn-secondary" onclick="inputAcakMurni()">🎲 Input Acak</button>
+          </div>
+        </div>
+
+        <div class="auto-divider"></div>
+
+        <!-- Kolom 2: Dari Bank Data Bawaan -->
+        <div class="auto-col">
+          <div class="auto-col-label">📥 Dari Bank Data</div>
+          <p class="text-sm text-muted">Ambil data pasien acak dari bank data bawaan (<code>data_pasien.json</code>).</p>
+          <div class="auto-controls">
+            <button class="btn btn-secondary" onclick="acakDariBankData()">📥 Ambil Acak</button>
+          </div>
+          <div id="bankdata-status" class="auto-status"></div>
+        </div>
+
+        <div class="auto-divider"></div>
+
+        <!-- Kolom 3: Upload & Acak dari File -->
+        <div class="auto-col">
+          <div class="auto-col-label">📂 Dari File Kustom</div>
+          <p class="text-sm text-muted">Upload JSON/CSV pasien, lalu ambil data acak dari file tersebut.</p>
+          <div class="auto-controls">
+            <button class="btn btn-ghost" onclick="document.getElementById('diag-input-json').click()">📄 JSON</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('diag-input-csv').click()">📊 CSV</button>
+            <button class="btn btn-secondary" id="btn-acak-file" onclick="acakDariFileDiag()" disabled>🎯 Ambil Acak</button>
+          </div>
+          <input type="file" id="diag-input-json" accept=".json" style="display:none" onchange="loadFileDiagJSON(event)">
+          <input type="file" id="diag-input-csv"  accept=".csv"  style="display:none" onchange="loadFileDiagCSV(event)">
+          <div id="file-diag-status" class="auto-status"></div>
+        </div>
+
+      </div>
+
+      <!-- Info pasien yang sedang dimuat -->
+      <div id="auto-loaded-info" class="auto-loaded-info" style="display:none">
+        <span class="auto-loaded-icon">👤</span>
+        <span id="auto-loaded-text"></span>
+        <button class="btn btn-ghost" style="margin-left:auto;padding:4px 12px;font-size:0.75rem" onclick="jalankanDiagnosa()">🔍 Langsung Diagnosa</button>
+      </div>
+    </div>
+
     <!-- Info banner -->
     <div class="info-banner teal mb-24">
       <span>💡</span>
-      <span>Pilih minimal <strong>1 gejala</strong>. Semakin banyak gejala relevan yang dipilih, semakin akurat hasilnya. Gunakan <strong>Contoh Kasus Jurnal</strong> untuk uji coba cepat.</span>
+      <span>Pilih minimal <strong>1 gejala</strong>. Semakin banyak gejala relevan yang dipilih, semakin akurat hasilnya. Gunakan panel <strong>Input Otomatis</strong> di atas untuk mengisi gejala secara cepat.</span>
     </div>
 
     <!-- Symptom grid — akan di-render oleh JS -->
@@ -277,9 +332,10 @@
       <!-- Format hint -->
       <div class="format-hint">
         <strong>Format JSON:</strong>
-        <code>[{"id":"P001","nama":"...","usia":30,"gejala":["G01","G07"],"diagnosa_aktual":"P02","catatan":"..."}]</code><br>
+        <code>[{"id":"P001","nama":"...","usia":30,"gejala":["G01","G07"]}]</code>
+        — field <code>diagnosa_aktual</code> opsional (untuk hitung akurasi)<br>
         <strong>Format CSV:</strong>
-        <code>id,nama,usia,gejala,diagnosa_aktual,catatan</code> — kolom <code>gejala</code> dipisahkan spasi: <code>G01 G07 G10</code>
+        <code>id,nama,usia,gejala</code> — kolom <code>gejala</code> dipisahkan spasi: <code>G01 G07 G10</code>
       </div>
 
       <!-- Preview tabel -->
@@ -292,9 +348,9 @@
         </div>
         <div class="preview-table-wrap">
           <table class="batch-table" id="preview-table">
-            <thead>
+            <thead id="preview-thead">
               <tr>
-                <th>ID</th><th>Nama</th><th>Usia</th><th>Gejala</th><th>Diagnosa Aktual</th><th>Catatan</th>
+                <th>ID</th><th>Nama</th><th>Usia</th><th>Gejala</th><th>Info / Status</th>
               </tr>
             </thead>
             <tbody id="preview-tbody"></tbody>
@@ -306,41 +362,74 @@
     <!-- ─── B. HASIL BATCH (muncul setelah dijalankan) ─── -->
     <div id="batch-result" style="display:none;">
 
-      <!-- Summary stat cards -->
-      <div class="stat-grid">
-        <div class="stat-card">
-          <div class="stat-num" id="stat-total">0</div>
-          <div class="stat-label">Total Data</div>
-        </div>
-        <div class="stat-card success">
-          <div class="stat-num" id="stat-benar">0</div>
-          <div class="stat-label">Prediksi Benar</div>
-        </div>
-        <div class="stat-card danger">
-          <div class="stat-num" id="stat-salah">0</div>
-          <div class="stat-label">Prediksi Salah</div>
-        </div>
-        <div class="stat-card accent">
-          <div class="stat-num" id="stat-akurasi">0%</div>
-          <div class="stat-label">Akurasi Sistem</div>
+      <!-- Banner mode: jika ada/tidak ada label aktual -->
+      <div id="batch-mode-banner" class="info-banner mb-24"></div>
+
+      <!-- Summary stat cards — untuk data tanpa label (data uji murni) -->
+      <div id="unlabeled-section" style="display:none;">
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-num" id="stat-u-total">0</div>
+            <div class="stat-label">Total Data Uji</div>
+          </div>
+          <div class="stat-card success">
+            <div class="stat-num" id="stat-u-terdiagnosa">0</div>
+            <div class="stat-label">Terdiagnosa</div>
+          </div>
+          <div class="stat-card accent">
+            <div class="stat-num" id="stat-u-rerata">0%</div>
+            <div class="stat-label">Rerata Kepercayaan</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="stat-u-dominan" style="font-size:1.4rem;color:var(--text-primary);padding-top:4px;">—</div>
+            <div class="stat-label">Diagnosis Terbanyak</div>
+          </div>
         </div>
       </div>
 
-      <!-- Per-disease accuracy bars -->
-      <div class="card mb-24">
-        <div class="card-title"><div class="icon">📉</div>Akurasi per Penyakit</div>
-        <div id="disease-accuracy-bars"></div>
+      <!-- Summary stat cards — hanya tampil jika ada label -->
+      <div id="accuracy-section">
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-num" id="stat-total">0</div>
+            <div class="stat-label">Total Data</div>
+          </div>
+          <div class="stat-card success">
+            <div class="stat-num" id="stat-benar">0</div>
+            <div class="stat-label">Prediksi Benar</div>
+          </div>
+          <div class="stat-card danger">
+            <div class="stat-num" id="stat-salah">0</div>
+            <div class="stat-label">Prediksi Salah</div>
+          </div>
+          <div class="stat-card accent">
+            <div class="stat-num" id="stat-akurasi">0%</div>
+            <div class="stat-label">Akurasi Sistem</div>
+          </div>
+        </div>
+
+        <!-- Per-disease accuracy bars -->
+        <div class="card mb-24">
+          <div class="card-title"><div class="icon">📉</div>Akurasi per Penyakit</div>
+          <div id="disease-accuracy-bars"></div>
+        </div>
+
+        <!-- Confusion Matrix -->
+        <div class="card mb-24">
+          <div class="card-title">
+            <div class="icon">🔲</div>Confusion Matrix
+            <span class="text-muted text-sm" style="margin-left:8px;font-weight:400;">Baris = Aktual · Kolom = Prediksi</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="confusion-matrix" id="confusion-matrix-table"></table>
+          </div>
+        </div>
       </div>
 
-      <!-- Confusion Matrix -->
+      <!-- Distribusi prediksi (selalu tampil) -->
       <div class="card mb-24">
-        <div class="card-title">
-          <div class="icon">🔲</div>Confusion Matrix
-          <span class="text-muted text-sm" style="margin-left:8px;font-weight:400;">Baris = Aktual · Kolom = Prediksi</span>
-        </div>
-        <div style="overflow-x:auto;">
-          <table class="confusion-matrix" id="confusion-matrix-table"></table>
-        </div>
+        <div class="card-title"><div class="icon">📊</div>Distribusi Prediksi Sistem</div>
+        <div id="pred-dist-bars"></div>
       </div>
 
       <!-- Tabel detail hasil -->
@@ -352,12 +441,7 @@
         </div>
         <div style="overflow-x:auto;">
           <table class="batch-table batch-result-table" id="result-table">
-            <thead>
-              <tr>
-                <th>#</th><th>Nama</th><th>Usia</th><th>Gejala</th>
-                <th>Aktual</th><th>Prediksi</th><th>Kepercayaan</th><th>Status</th>
-              </tr>
-            </thead>
+            <thead id="result-thead"></thead>
             <tbody id="result-tbody"></tbody>
           </table>
         </div>
@@ -490,6 +574,8 @@ function resetGejala() {
   document.getElementById('count-selected').textContent = '0';
   document.getElementById('result-section').classList.remove('visible');
   hasilDiagnosa = null;
+  // Sembunyikan info loaded
+  document.getElementById('auto-loaded-info').style.display = 'none';
 }
 
 /** Muat kasus contoh dari jurnal */
@@ -501,9 +587,129 @@ function loadKasusJurnal() {
     document.getElementById('card-' + kode).setAttribute('aria-checked', 'true');
   });
   document.getElementById('count-selected').textContent = gejalaTerpilih.size;
-
-  // Scroll ke atas grid
   document.getElementById('symptom-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  INPUT OTOMATIS (Tab 1)
+// ─────────────────────────────────────────────────────────────
+
+/** Terapkan daftar gejala ke grid dan tampilkan info pasien */
+function terapkanGejala(gejalaList, info) {
+  resetGejala();
+  const gejalaValid = gejalaList.filter(g => DS.GEJALA[g]);
+  gejalaValid.forEach(kode => {
+    gejalaTerpilih.add(kode);
+    document.getElementById('card-' + kode).classList.add('selected');
+    document.getElementById('card-' + kode).setAttribute('aria-checked', 'true');
+  });
+  document.getElementById('count-selected').textContent = gejalaTerpilih.size;
+
+  // Tampilkan info pasien
+  const infoBox  = document.getElementById('auto-loaded-info');
+  const infoText = document.getElementById('auto-loaded-text');
+  infoText.textContent = info;
+  infoBox.style.display = 'flex';
+
+  // Scroll ke grid
+  document.getElementById('symptom-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/** 🎲 Input Acak Murni */
+function inputAcakMurni() {
+  const n = Math.min(35, Math.max(1, parseInt(document.getElementById('random-n').value) || 6));
+  const semuaKode = Object.keys(DS.GEJALA);
+  // Fisher-Yates shuffle kemudian ambil n pertama
+  const shuffled = [...semuaKode];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const dipilih = shuffled.slice(0, n);
+  terapkanGejala(dipilih, `🎲 Acak murni — ${n} gejala dipilih secara random dari 35 gejala.`);
+}
+
+/** Data file yang di-upload di panel diagnosis */
+let fileDiagData = [];
+
+/** 📥 Ambil data acak dari bank data bawaan */
+async function acakDariBankData() {
+  const statusEl = document.getElementById('bankdata-status');
+  statusEl.textContent = '⏳ Memuat...';
+  statusEl.className = 'auto-status loading';
+  try {
+    const res = await fetch('data_pasien.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const pasien = data[Math.floor(Math.random() * data.length)];
+    statusEl.textContent = `✅ Bank data dimuat (${data.length} pasien)`;
+    statusEl.className = 'auto-status ok';
+    terapkanGejala(pasien.gejala, `👤 ${pasien.nama} (${pasien.usia} th) — ID: ${pasien.id}`);
+  } catch (e) {
+    statusEl.textContent = '❌ Gagal: ' + e.message;
+    statusEl.className = 'auto-status err';
+  }
+}
+
+/** 📄 Load JSON untuk panel diagnosis */
+function loadFileDiagJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) throw new Error('Harus array JSON.');
+      fileDiagData = data;
+      const statusEl = document.getElementById('file-diag-status');
+      statusEl.textContent = `✅ ${data.length} data dari ${file.name}`;
+      statusEl.className = 'auto-status ok';
+      document.getElementById('btn-acak-file').disabled = false;
+    } catch (err) {
+      document.getElementById('file-diag-status').textContent = '❌ ' + err.message;
+      document.getElementById('file-diag-status').className = 'auto-status err';
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+/** 📊 Load CSV untuk panel diagnosis */
+function loadFileDiagCSV(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const lines = ev.target.result.trim().split(/\r?\n/);
+      const parsed = lines.slice(1).map((line, i) => {
+        const cols = line.split(',');
+        return {
+          id:    (cols[0] || '').trim() || ('R' + (i + 1)),
+          nama:  (cols[1] || '').trim() || ('Pasien ' + (i + 1)),
+          usia:  parseInt(cols[2]) || 0,
+          gejala: (cols[3] || '').trim().split(/\s+/).filter(g => /^G\d+$/.test(g)),
+        };
+      }).filter(r => r.gejala.length > 0);
+      fileDiagData = parsed;
+      const statusEl = document.getElementById('file-diag-status');
+      statusEl.textContent = `✅ ${parsed.length} data dari ${file.name}`;
+      statusEl.className = 'auto-status ok';
+      document.getElementById('btn-acak-file').disabled = false;
+    } catch (err) {
+      document.getElementById('file-diag-status').textContent = '❌ ' + err.message;
+      document.getElementById('file-diag-status').className = 'auto-status err';
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+/** 🎯 Ambil pasien acak dari file yang di-upload */
+function acakDariFileDiag() {
+  if (fileDiagData.length === 0) return;
+  const pasien = fileDiagData[Math.floor(Math.random() * fileDiagData.length)];
+  terapkanGejala(pasien.gejala, `👤 ${pasien.nama || pasien.id} (${pasien.usia || '—'} th) — ID: ${pasien.id}`);
 }
 
 /** Jalankan algoritma Dempster-Shafer */
@@ -1073,15 +1279,14 @@ function handleUploadCSV(e) {
       const lines = ev.target.result.trim().split(/\r?\n/);
       if (lines.length < 2) throw new Error('File CSV kosong atau hanya header.');
       const parsed = lines.slice(1).map((line, i) => {
-        // Pisahkan dengan koma, tapi abaikan koma di dalam quotes
         const cols = line.split(',');
         return {
           id:              (cols[0] || '').trim() || ('R' + (i + 1)),
           nama:            (cols[1] || '').trim() || ('Pasien ' + (i + 1)),
           usia:            parseInt(cols[2]) || 0,
           gejala:          (cols[3] || '').trim().split(/\s+/).filter(g => /^G\d+$/.test(g)),
-          diagnosa_aktual: (cols[4] || '').trim(),
-          catatan:         (cols[5] || '').trim(),
+          diagnosa_aktual: cols[4] ? cols[4].trim() : '',
+          catatan:         cols[5] ? cols[5].trim() : '',
         };
       }).filter(r => r.gejala.length > 0);
       dataPasienBatch = parsed;
@@ -1099,31 +1304,47 @@ function handleUploadCSV(e) {
 function renderPreviewTable() {
   const wrap  = document.getElementById('preview-wrap');
   const tbody = document.getElementById('preview-tbody');
+  const thead = document.getElementById('preview-thead');
   const count = document.getElementById('preview-count');
 
   count.textContent = dataPasienBatch.length;
   tbody.innerHTML = '';
 
+  const hasAnyLabel = dataPasienBatch.some(p => p.diagnosa_aktual && p.diagnosa_aktual.trim() !== '');
+
+  thead.innerHTML = `
+    <tr>
+      <th>ID</th><th>Nama</th><th>Usia</th><th>Gejala (${dataPasienBatch.reduce((acc,p)=>acc+p.gejala.length,0)} total)</th>
+      <th>${hasAnyLabel ? 'Diagnosa Aktual' : 'Status'}</th>
+    </tr>
+  `;
+
   dataPasienBatch.forEach(p => {
-    const aktualNama = DS.PENYAKIT[p.diagnosa_aktual] || p.diagnosa_aktual || '—';
-    const meta = PENYAKIT_META[p.diagnosa_aktual] || {};
     const gTags = (p.gejala || []).map(g =>
       `<span class="g-tag">${escHTML(g)}</span>`
     ).join('');
 
+    let statusCol = '';
+    if (hasAnyLabel) {
+      const aktualNama = DS.PENYAKIT[p.diagnosa_aktual] || p.diagnosa_aktual || '—';
+      const meta = PENYAKIT_META[p.diagnosa_aktual] || {};
+      statusCol = `
+        <span class="badge-penyakit" style="background:${meta.bg||'rgba(255,255,255,0.05)'};color:${meta.color||'#94a3b8'};border:1px solid ${meta.border||'rgba(255,255,255,0.1)'}">
+          ${escHTML(p.diagnosa_aktual || '—')}
+        </span>
+        <span style="font-size:0.75rem;color:var(--text-muted);margin-left:6px">${escHTML(aktualNama)}</span>
+      `;
+    } else {
+      statusCol = `<span class="badge-penyakit" style="background:rgba(20,184,166,0.12);color:var(--teal-400);border:1px solid rgba(20,184,166,0.25);">✓ ${p.gejala.length} Gejala Siap Uji</span>`;
+    }
+
     tbody.innerHTML += `
       <tr>
         <td class="mono">${escHTML(p.id)}</td>
-        <td>${escHTML(p.nama)}</td>
+        <td><strong>${escHTML(p.nama)}</strong></td>
         <td class="mono" style="text-align:center">${p.usia || '—'}</td>
         <td><div class="g-tag-wrap">${gTags}</div></td>
-        <td>
-          <span class="badge-penyakit" style="background:${meta.bg||'rgba(255,255,255,0.05)'};color:${meta.color||'#94a3b8'};border:1px solid ${meta.border||'rgba(255,255,255,0.1)'}">
-            ${escHTML(p.diagnosa_aktual || '—')}
-          </span>
-          <span style="font-size:0.75rem;color:var(--text-muted);margin-left:6px">${escHTML(aktualNama)}</span>
-        </td>
-        <td style="font-size:0.75rem;color:var(--text-muted)">${escHTML(p.catatan || '—')}</td>
+        <td>${statusCol}</td>
       </tr>`;
   });
 
@@ -1142,28 +1363,41 @@ function jalankanBatch() {
 
   const btn = document.getElementById('btn-run-batch');
   btn.disabled = true;
-  btn.innerHTML = '<div class="spinner"></div> Menghitung...';
+  btn.innerHTML = '<div class="spinner"></div> Mendiagnosa Data Uji...';
 
   setTimeout(() => {
     try {
       hasilBatch = dataPasienBatch.map(pasien => {
         const gejalaValid = (pasien.gejala || []).filter(g => DS.GEJALA[g]);
         if (gejalaValid.length === 0) {
-          return { ...pasien, prediksi: null, prediksiNama: 'N/A', kepercayaan: 0, beliefTop: 0, benar: false, allTop: [] };
+          return {
+            ...pasien,
+            gejalaValid: [],
+            prediksi: null,
+            prediksiNama: 'Tidak terdeteksi',
+            kepercayaan: 0,
+            beliefTop: 0,
+            plausibilityTop: 0,
+            benar: null,
+            allTop: []
+          };
         }
         const hasil    = DS.diagnosa([...gejalaValid].sort());
         const topItem  = hasil.top[0];
         const predKode = topItem && topItem.nilai > 0 ? topItem.kode : null;
-        const benar    = predKode !== null && predKode === pasien.diagnosa_aktual;
+        const hasActual = Boolean(pasien.diagnosa_aktual && pasien.diagnosa_aktual.trim() !== '');
+        const benar    = hasActual ? (predKode !== null && predKode === pasien.diagnosa_aktual) : null;
+
         return {
           ...pasien,
           gejalaValid,
-          prediksi:     predKode,
-          prediksiNama: predKode ? DS.PENYAKIT[predKode] : 'Tidak terdeteksi',
-          kepercayaan:  topItem ? topItem.nilai * 100  : 0,
-          beliefTop:    topItem ? topItem.belief * 100 : 0,
+          prediksi:        predKode,
+          prediksiNama:    predKode ? DS.PENYAKIT[predKode] : 'Tidak terdeteksi',
+          kepercayaan:     topItem ? topItem.nilai * 100 : 0,
+          beliefTop:       topItem ? topItem.belief * 100 : 0,
+          plausibilityTop: topItem ? topItem.plausibility * 100 : 0,
           benar,
-          allTop:       hasil.top,
+          allTop:          hasil.top,
         };
       });
 
@@ -1177,22 +1411,60 @@ function jalankanBatch() {
 
 /** Render semua komponen hasil batch */
 function renderHasilBatch() {
-  const total  = hasilBatch.length;
-  const benar  = hasilBatch.filter(r => r.benar).length;
-  const salah  = total - benar;
-  const akurasi = total > 0 ? (benar / total * 100).toFixed(2) : '0.00';
+  const total     = hasilBatch.length;
+  const hasLabels = hasilBatch.some(r => r.diagnosa_aktual && r.diagnosa_aktual.trim() !== '');
+  const banner    = document.getElementById('batch-mode-banner');
+  const accSec    = document.getElementById('accuracy-section');
+  const unlabSec  = document.getElementById('unlabeled-section');
 
-  // Stat cards
-  document.getElementById('stat-total').textContent   = total;
-  document.getElementById('stat-benar').textContent   = benar;
-  document.getElementById('stat-salah').textContent   = salah;
-  document.getElementById('stat-akurasi').textContent = akurasi + '%';
+  if (hasLabels) {
+    accSec.style.display   = 'block';
+    unlabSec.style.display = 'none';
 
-  // Akurasi per penyakit
-  renderDiseaseAccuracy();
+    const benar   = hasilBatch.filter(r => r.benar === true).length;
+    const salah   = total - benar;
+    const akurasi = total > 0 ? (benar / total * 100).toFixed(2) : '0.00';
 
-  // Confusion matrix
-  renderConfusionMatrix();
+    banner.className = 'info-banner teal mb-24';
+    banner.innerHTML = `<span>📊</span><span><strong>Mode Evaluasi Benchmark:</strong> Terdeteksi label diagnosa aktual. Akurasi sistem Dempster-Shafer pada dataset ini adalah <strong>${akurasi}%</strong> (${benar} benar dari ${total} data uji).</span>`;
+
+    document.getElementById('stat-total').textContent   = total;
+    document.getElementById('stat-benar').textContent   = benar;
+    document.getElementById('stat-salah').textContent   = salah;
+    document.getElementById('stat-akurasi').textContent = akurasi + '%';
+
+    renderDiseaseAccuracy();
+    renderConfusionMatrix();
+  } else {
+    accSec.style.display   = 'none';
+    unlabSec.style.display = 'block';
+
+    const terdiagnosaCount = hasilBatch.filter(r => r.prediksi !== null).length;
+    const avgConf = (hasilBatch.reduce((sum, r) => sum + r.kepercayaan, 0) / (total || 1)).toFixed(2);
+
+    // Cari penyakit paling sering diprediksi
+    const freq = {};
+    hasilBatch.forEach(r => {
+      if (r.prediksi) freq[r.prediksi] = (freq[r.prediksi] || 0) + 1;
+    });
+    let topCode = '—';
+    let maxF = 0;
+    for (const [code, count] of Object.entries(freq)) {
+      if (count > maxF) { maxF = count; topCode = code; }
+    }
+    const dominantLabel = topCode !== '—' ? `${topCode} (${maxF})` : '—';
+
+    banner.className = 'info-banner teal mb-24';
+    banner.innerHTML = `<span>🧪</span><span><strong>Mode Pengujian Data Uji:</strong> Sistem berhasil mendiagnosa seluruh <strong>${total} pasien</strong> secara otomatis menggunakan metode Dempster-Shafer. Klik tombol <strong>"Buka di Diagnosis"</strong> pada tabel untuk melihat proses kombinasi matematisnya.</span>`;
+
+    document.getElementById('stat-u-total').textContent       = total;
+    document.getElementById('stat-u-terdiagnosa').textContent = `${terdiagnosaCount} / ${total}`;
+    document.getElementById('stat-u-rerata').textContent      = `${avgConf}%`;
+    document.getElementById('stat-u-dominan').textContent     = dominantLabel;
+  }
+
+  // Distribusi prediksi selalu tampil
+  renderPredictionDistribution();
 
   // Tabel detail
   renderResultTable();
@@ -1201,7 +1473,57 @@ function renderHasilBatch() {
   document.getElementById('batch-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-/** Bar chart akurasi per penyakit */
+/** Render distribusi prediksi (semua 6 penyakit) */
+function renderPredictionDistribution() {
+  const container = document.getElementById('pred-dist-bars');
+  container.innerHTML = '';
+  const total = hasilBatch.length;
+  if (total === 0) return;
+
+  const counts = {};
+  Object.keys(DS.PENYAKIT).forEach(p => counts[p] = 0);
+  counts['N/A'] = 0;
+
+  hasilBatch.forEach(r => {
+    if (r.prediksi && counts[r.prediksi] !== undefined) {
+      counts[r.prediksi]++;
+    } else {
+      counts['N/A']++;
+    }
+  });
+
+  Object.keys(DS.PENYAKIT).forEach(code => {
+    const count = counts[code] || 0;
+    const pct   = (count / total * 100).toFixed(1);
+    const meta  = PENYAKIT_META[code] || {};
+    container.innerHTML += `
+      <div class="bar-item">
+        <div class="bar-header">
+          <span class="bar-label">${meta.icon || '⚕️'} ${code} — ${DS.PENYAKIT[code]}</span>
+          <span class="bar-val">${count} pasien &nbsp; <span style="color:${meta.color||'var(--teal-400)'}">${pct}%</span></span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${pct}%;background:${meta.color||'var(--teal-400)'}"></div>
+        </div>
+      </div>`;
+  });
+
+  if (counts['N/A'] > 0) {
+    const naPct = (counts['N/A'] / total * 100).toFixed(1);
+    container.innerHTML += `
+      <div class="bar-item">
+        <div class="bar-header">
+          <span class="bar-label">❓ Tidak Terdeteksi</span>
+          <span class="bar-val">${counts['N/A']} pasien &nbsp; <span style="color:#ef4444">${naPct}%</span></span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${naPct}%;background:#ef4444"></div>
+        </div>
+      </div>`;
+  }
+}
+
+/** Bar chart akurasi per penyakit (mode evaluasi benchmark) */
 function renderDiseaseAccuracy() {
   const pCodes  = Object.keys(DS.PENYAKIT);
   const container = document.getElementById('disease-accuracy-bars');
@@ -1210,7 +1532,7 @@ function renderDiseaseAccuracy() {
   pCodes.forEach(kode => {
     const rows  = hasilBatch.filter(r => r.diagnosa_aktual === kode);
     if (rows.length === 0) return;
-    const benar = rows.filter(r => r.benar).length;
+    const benar = rows.filter(r => r.benar === true).length;
     const pct   = (benar / rows.length * 100).toFixed(1);
     const meta  = PENYAKIT_META[kode] || {};
 
@@ -1227,12 +1549,11 @@ function renderDiseaseAccuracy() {
   });
 }
 
-/** Render confusion matrix 6×6 */
+/** Render confusion matrix 6×6 (mode evaluasi benchmark) */
 function renderConfusionMatrix() {
   const pCodes = Object.keys(DS.PENYAKIT);
   const table  = document.getElementById('confusion-matrix-table');
 
-  // Bangun matriks count[aktual][prediksi]
   const matrix = {};
   pCodes.forEach(a => { matrix[a] = {}; pCodes.forEach(p => { matrix[a][p] = 0; }); });
   hasilBatch.forEach(r => {
@@ -1270,7 +1591,26 @@ function renderConfusionMatrix() {
 
 /** Render tabel detail hasil per pasien */
 function renderResultTable() {
+  const thead = document.getElementById('result-thead');
   const tbody = document.getElementById('result-tbody');
+  const hasLabels = hasilBatch.some(r => r.diagnosa_aktual && r.diagnosa_aktual.trim() !== '');
+
+  if (hasLabels) {
+    thead.innerHTML = `
+      <tr>
+        <th>#</th><th>Nama & ID</th><th>Usia</th><th>Gejala</th>
+        <th>Aktual</th><th>Prediksi Sistem</th><th>Kepercayaan</th><th>Status</th><th>Aksi</th>
+      </tr>
+    `;
+  } else {
+    thead.innerHTML = `
+      <tr>
+        <th>#</th><th>Nama & ID</th><th>Usia</th><th>Gejala</th>
+        <th>Prediksi Sistem</th><th>Nilai Massa (m)</th><th>Belief (Bel)</th><th>Plausibility (Pl)</th><th>Aksi</th>
+      </tr>
+    `;
+  }
+
   tbody.innerHTML = '';
 
   hasilBatch.forEach((r, i) => {
@@ -1280,85 +1620,138 @@ function renderResultTable() {
       `<span class="g-tag">${escHTML(g)}</span>`
     ).join('');
 
-    const statusIcon  = r.benar ? '✅' : '❌';
-    const statusClass = r.benar ? 'status-ok' : 'status-fail';
+    const predBadge = `
+      <span class="badge-penyakit" style="background:${metaP.bg||'rgba(255,255,255,0.05)'};color:${metaP.color||'#94a3b8'};border:1px solid ${metaP.border||'transparent'}">
+        ${escHTML(r.prediksi || 'N/A')}
+      </span>
+      <div style="font-size:0.75rem;color:var(--text-primary);margin-top:3px;font-weight:600">${escHTML(r.prediksiNama || '—')}</div>
+    `;
 
-    tbody.innerHTML += `
-      <tr>
-        <td class="mono" style="text-align:center">${i + 1}</td>
-        <td>
-          <div style="font-weight:600">${escHTML(r.nama)}</div>
-          <div class="mono" style="font-size:0.7rem;color:var(--text-muted)">${escHTML(r.id)}</div>
-        </td>
-        <td class="mono" style="text-align:center">${r.usia || '—'}</td>
-        <td><div class="g-tag-wrap">${gTags}</div></td>
-        <td>
-          <span class="badge-penyakit" style="background:${metaA.bg||'rgba(255,255,255,0.05)'};color:${metaA.color||'#94a3b8'};border:1px solid ${metaA.border||'transparent'}">
-            ${escHTML(r.diagnosa_aktual || '—')}
-          </span>
-          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">${escHTML(DS.PENYAKIT[r.diagnosa_aktual] || r.diagnosa_aktual || '—')}</div>
-        </td>
-        <td>
-          <span class="badge-penyakit" style="background:${metaP.bg||'rgba(255,255,255,0.05)'};color:${metaP.color||'#94a3b8'};border:1px solid ${metaP.border||'transparent'}">
-            ${escHTML(r.prediksi || 'N/A')}
-          </span>
-          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">${escHTML(r.prediksiNama || '—')}</div>
-        </td>
-        <td class="mono" style="text-align:right">
-          <div style="color:var(--teal-400)">${r.kepercayaan.toFixed(2)}%</div>
-          <div style="font-size:0.68rem;color:var(--text-muted)">Bel: ${r.beliefTop.toFixed(2)}%</div>
-        </td>
-        <td class="${statusClass}" style="text-align:center;font-size:1.1rem">${statusIcon}</td>
-      </tr>`;
+    const aksiBtn = `
+      <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.72rem;white-space:nowrap;" onclick="bukaPasienDiDiagnosis('${escHTML(r.id)}')">
+        🩺 Buka Detail
+      </button>
+    `;
+
+    if (hasLabels) {
+      const statusIcon  = r.benar ? '✅' : '❌';
+      const statusClass = r.benar ? 'status-ok' : 'status-fail';
+
+      tbody.innerHTML += `
+        <tr>
+          <td class="mono" style="text-align:center">${i + 1}</td>
+          <td>
+            <div style="font-weight:600">${escHTML(r.nama)}</div>
+            <div class="mono" style="font-size:0.7rem;color:var(--text-muted)">${escHTML(r.id)}</div>
+          </td>
+          <td class="mono" style="text-align:center">${r.usia || '—'}</td>
+          <td><div class="g-tag-wrap">${gTags}</div></td>
+          <td>
+            <span class="badge-penyakit" style="background:${metaA.bg||'rgba(255,255,255,0.05)'};color:${metaA.color||'#94a3b8'};border:1px solid ${metaA.border||'transparent'}">
+              ${escHTML(r.diagnosa_aktual || '—')}
+            </span>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">${escHTML(DS.PENYAKIT[r.diagnosa_aktual] || r.diagnosa_aktual || '—')}</div>
+          </td>
+          <td>${predBadge}</td>
+          <td class="mono" style="text-align:right">
+            <div style="color:var(--teal-400);font-weight:700">${r.kepercayaan.toFixed(2)}%</div>
+            <div style="font-size:0.68rem;color:var(--text-muted)">Bel: ${r.beliefTop.toFixed(2)}%</div>
+          </td>
+          <td class="${statusClass}" style="text-align:center;font-size:1.1rem">${statusIcon}</td>
+          <td style="text-align:center">${aksiBtn}</td>
+        </tr>`;
+    } else {
+      tbody.innerHTML += `
+        <tr>
+          <td class="mono" style="text-align:center">${i + 1}</td>
+          <td>
+            <div style="font-weight:600">${escHTML(r.nama)}</div>
+            <div class="mono" style="font-size:0.7rem;color:var(--text-muted)">${escHTML(r.id)}</div>
+          </td>
+          <td class="mono" style="text-align:center">${r.usia || '—'}</td>
+          <td><div class="g-tag-wrap">${gTags}</div></td>
+          <td>${predBadge}</td>
+          <td class="mono" style="text-align:right;color:var(--teal-400);font-weight:700">${r.kepercayaan.toFixed(2)}%</td>
+          <td class="mono" style="text-align:right;color:var(--text-secondary)">${r.beliefTop.toFixed(2)}%</td>
+          <td class="mono" style="text-align:right;color:var(--text-muted)">${r.plausibilityTop.toFixed(2)}%</td>
+          <td style="text-align:center">${aksiBtn}</td>
+        </tr>`;
+    }
   });
+}
+
+/** Buka data pasien batch langsung di Tab Diagnosis */
+function bukaPasienDiDiagnosis(id) {
+  const pasien = dataPasienBatch.find(p => p.id === id);
+  if (!pasien) return;
+
+  switchTab('diagnosis');
+  terapkanGejala(pasien.gejala, `👤 Data Uji: ${pasien.nama} (${pasien.usia || '—'} th) — ID: ${pasien.id}`);
+  jalankanDiagnosa();
 }
 
 /** Export hasil pengujian ke CSV */
 function exportHasilCSV() {
   if (hasilBatch.length === 0) return;
 
-  const total  = hasilBatch.length;
-  const benar  = hasilBatch.filter(r => r.benar).length;
-  const akurasi = (benar / total * 100).toFixed(2);
+  const total     = hasilBatch.length;
+  const hasLabels = hasilBatch.some(r => r.diagnosa_aktual && r.diagnosa_aktual.trim() !== '');
 
-  let csv = 'No,ID,Nama,Usia,Gejala,Diagnosa_Aktual,Nama_Aktual,Prediksi,Nama_Prediksi,Kepercayaan_Pct,Belief_Pct,Status\n';
-  hasilBatch.forEach((r, i) => {
-    const gejalaStr = (r.gejalaValid || r.gejala || []).join(' ');
-    const row = [
-      i + 1,
-      r.id,
-      '"' + r.nama + '"',
-      r.usia,
-      '"' + gejalaStr + '"',
-      r.diagnosa_aktual || '',
-      '"' + (DS.PENYAKIT[r.diagnosa_aktual] || '') + '"',
-      r.prediksi || 'N/A',
-      '"' + (r.prediksiNama || '') + '"',
-      r.kepercayaan.toFixed(4),
-      r.beliefTop.toFixed(4),
-      r.benar ? 'BENAR' : 'SALAH',
-    ].join(',');
-    csv += row + '\n';
-  });
-  csv += '\n# RINGKASAN\n';
-  csv += `# Total,${total}\n# Benar,${benar}\n# Salah,${total - benar}\n# Akurasi,${akurasi}%\n`;
+  let csv = '';
+  if (hasLabels) {
+    const benar   = hasilBatch.filter(r => r.benar === true).length;
+    const akurasi = (benar / total * 100).toFixed(2);
+
+    csv = 'No,ID,Nama,Usia,Gejala,Diagnosa_Aktual,Nama_Aktual,Prediksi,Nama_Prediksi,Kepercayaan_Pct,Belief_Pct,Status\n';
+    hasilBatch.forEach((r, i) => {
+      const gejalaStr = (r.gejalaValid || r.gejala || []).join(' ');
+      const row = [
+        i + 1,
+        r.id,
+        '"' + r.nama + '"',
+        r.usia,
+        '"' + gejalaStr + '"',
+        r.diagnosa_aktual || '',
+        '"' + (DS.PENYAKIT[r.diagnosa_aktual] || '') + '"',
+        r.prediksi || 'N/A',
+        '"' + (r.prediksiNama || '') + '"',
+        r.kepercayaan.toFixed(4),
+        r.beliefTop.toFixed(4),
+        r.benar ? 'BENAR' : 'SALAH',
+      ].join(',');
+      csv += row + '\n';
+    });
+    csv += '\n# RINGKASAN BENCHMARK\n';
+    csv += `# Total,${total}\n# Benar,${benar}\n# Salah,${total - benar}\n# Akurasi,${akurasi}%\n`;
+  } else {
+    csv = 'No,ID,Nama,Usia,Gejala,Prediksi,Nama_Prediksi,Nilai_Massa_Pct,Belief_Pct,Plausibility_Pct\n';
+    hasilBatch.forEach((r, i) => {
+      const gejalaStr = (r.gejalaValid || r.gejala || []).join(' ');
+      const row = [
+        i + 1,
+        r.id,
+        '"' + r.nama + '"',
+        r.usia,
+        '"' + gejalaStr + '"',
+        r.prediksi || 'N/A',
+        '"' + (r.prediksiNama || '') + '"',
+        r.kepercayaan.toFixed(4),
+        r.beliefTop.toFixed(4),
+        r.plausibilityTop.toFixed(4),
+      ].join(',');
+      csv += row + '\n';
+    });
+    csv += '\n# RINGKASAN PENGUJIAN DATA UJI\n';
+    csv += `# Total Data Uji,${total}\n`;
+  }
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url;
-  a.download = 'hasil_uji_batch_uroexpert.csv';
+  a.download = hasLabels ? 'hasil_evaluasi_benchmark_uroexpert.csv' : 'hasil_uji_batch_uroexpert.csv';
   a.click();
   URL.revokeObjectURL(url);
-}
-
-/** Escape HTML untuk mencegah XSS */
-function escHTML(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 </script>
 

@@ -1,22 +1,21 @@
-id,nama,usia,gejala,diagnosa_aktual,catatan
-P001,Ahmad Fauzi,35,G01 G10 G11 G17 G27 G32,P01,Kasus dari jurnal — Prostatitis klasik
-P002,Budi Santoso,42,G02 G03 G04 G05 G15 G16 G30,P01,Prostatitis dengan gangguan berkemih dominan
-P003,Cahyo Purnomo,50,G01 G06 G15 G16 G21 G27,P01,Prostatitis dengan hematuria
-P004,Deni Kurniawan,38,G03 G04 G05 G18 G30 G35,P01,Prostatitis kronis dengan nyeri pelvik
-P005,Eko Wijaya,28,G07 G08 G10 G11 G22 G29,P02,Epididimitis akut dengan skrotum merah
-P006,Fajar Hidayat,31,G07 G10 G11 G23 G27 G31,P02,Epididimitis dengan cairan abnormal
-P007,Gunawan Saputra,25,G08 G10 G11 G22 G26 G29 G32,P02,Epididimitis muda dengan infertilitas
-P008,Hendra Pratama,33,G07 G08 G23 G27 G31 G32,P02,Epididimitis subakut
-P009,Irfan Maulana,22,G07 G08 G09 G10 G11 G28,P03,Orkitis bilateral pasca mumps
-P010,Joko Susilo,27,G07 G09 G10 G27 G28 G29,P03,Orkitis dengan demam tinggi
-P011,Kevin Andrean,19,G08 G09 G11 G27 G28,P03,Orkitis viral unilateral
-P012,Lukman Hakim,24,G01 G02 G22 G23 G24 G25,P04,Uretritis gonore — cairan khas
-P013,Muhammad Rizky,29,G01 G24 G25 G26,P04,Uretritis non-spesifik ringan
-P014,Nanda Prasetya,32,G02 G22 G23 G25 G26,P04,Uretritis klamidia
-P015,Oscar Firmansyah,26,G07 G08 G12 G13 G14 G35,P05,Varikokel derajat 2 — pembuluh berkelok
-P016,Putra Ramadhan,23,G12 G13 G14 G29 G31 G32,P05,Varikokel dengan keluhan infertilitas
-P017,Qodir Fathurrahman,30,G07 G13 G14 G31 G35,P05,Varikokel kanan nyeri saat berdiri
-P018,Rudi Hartanto,45,G17 G19 G20 G21 G33,P06,Disfungsi ereksi psikogenik
-P019,Surya Dinata,52,G18 G19 G20 G21 G34,P06,Disfungsi ereksi organik usia lanjut
-P020,Taufik Hidayatullah,40,G17 G18 G19 G20 G33 G34,P06,Disfungsi ereksi berat
-
+id,nama,usia,gejala
+P001,Ahmad Fauzi,35,G01 G10 G11 G17 G27 G32
+P002,Budi Santoso,42,G02 G03 G04 G05 G15 G16 G30
+P003,Cahyo Purnomo,50,G01 G06 G15 G16 G21 G27
+P004,Deni Kurniawan,38,G03 G04 G05 G18 G30 G35
+P005,Eko Wijaya,28,G07 G08 G10 G11 G22 G29
+P006,Fajar Hidayat,31,G07 G10 G11 G23 G27 G31
+P007,Gunawan Saputra,25,G08 G10 G11 G22 G26 G29 G32
+P008,Hendra Pratama,33,G07 G08 G23 G27 G31 G32
+P009,Irfan Maulana,22,G07 G08 G09 G10 G11 G28
+P010,Joko Susilo,27,G07 G09 G10 G27 G28 G29
+P011,Kevin Andrean,19,G08 G09 G11 G27 G28
+P012,Lukman Hakim,24,G01 G02 G22 G23 G24 G25
+P013,Muhammad Rizky,29,G01 G24 G25 G26
+P014,Nanda Prasetya,32,G02 G22 G23 G25 G26
+P015,Oscar Firmansyah,26,G07 G08 G12 G13 G14 G35
+P016,Putra Ramadhan,23,G12 G13 G14 G29 G31 G32
+P017,Qodir Fathurrahman,30,G07 G13 G14 G31 G35
+P018,Rudi Hartanto,45,G17 G19 G20 G21 G33
+P019,Surya Dinata,52,G18 G19 G20 G21 G34
+P020,Taufik Hidayatullah,40,G17 G18 G19 G20 G33 G34
