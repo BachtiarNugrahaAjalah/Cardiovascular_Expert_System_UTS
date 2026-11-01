@@ -37,6 +37,9 @@
     <button class="tab-btn" data-tab="knowledge" onclick="switchTab('knowledge')">
       📚 <span class="tab-label">Basis Pengetahuan</span>
     </button>
+    <button class="tab-btn" data-tab="batch" onclick="switchTab('batch')">
+      🧪 <span class="tab-label">Uji Batch</span>
+    </button>
   </div>
 </nav>
 
@@ -246,6 +249,123 @@
     </div>
 
   </div><!-- /tab-knowledge -->
+
+  <!-- ──────────────────── TAB 4: UJI BATCH ──────────────────── -->
+  <div id="tab-batch" class="tab-panel">
+
+    <div class="section-header">
+      <h2>🧪 Pengujian Batch</h2>
+      <p>Muat data pasien dari bank data bawaan, JSON, atau CSV — lalu uji akurasi sistem secara massal.</p>
+    </div>
+
+    <!-- ─── A. LOAD DATA ─── -->
+    <div class="card mb-24">
+      <div class="card-title"><div class="icon">📂</div>Muat Data Pasien</div>
+
+      <div class="load-btn-row">
+        <button class="btn btn-secondary" onclick="muatBankData()">📥 Muat Bank Data Bawaan</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('input-json').click()">📄 Upload JSON</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('input-csv').click()">📊 Upload CSV</button>
+        <a id="link-dl-json" href="data_pasien.json" download="data_pasien.json" class="btn btn-ghost">⬇ Unduh JSON</a>
+        <a id="link-dl-csv"  href="data_pasien.csv"  download="data_pasien.csv"  class="btn btn-ghost">⬇ Unduh CSV</a>
+      </div>
+      <input type="file" id="input-json" accept=".json" style="display:none" onchange="handleUploadJSON(event)">
+      <input type="file" id="input-csv"  accept=".csv"  style="display:none" onchange="handleUploadCSV(event)">
+
+      <div id="load-status" class="load-status"></div>
+
+      <!-- Format hint -->
+      <div class="format-hint">
+        <strong>Format JSON:</strong>
+        <code>[{"id":"P001","nama":"...","usia":30,"gejala":["G01","G07"],"diagnosa_aktual":"P02","catatan":"..."}]</code><br>
+        <strong>Format CSV:</strong>
+        <code>id,nama,usia,gejala,diagnosa_aktual,catatan</code> — kolom <code>gejala</code> dipisahkan spasi: <code>G01 G07 G10</code>
+      </div>
+
+      <!-- Preview tabel -->
+      <div id="preview-wrap" style="display:none;margin-top:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <span class="text-sm text-muted">Preview data (<span id="preview-count">0</span> pasien)</span>
+          <button class="btn btn-primary" id="btn-run-batch" onclick="jalankanBatch()" style="padding:8px 20px;">
+            🚀 Jalankan Pengujian
+          </button>
+        </div>
+        <div class="preview-table-wrap">
+          <table class="batch-table" id="preview-table">
+            <thead>
+              <tr>
+                <th>ID</th><th>Nama</th><th>Usia</th><th>Gejala</th><th>Diagnosa Aktual</th><th>Catatan</th>
+              </tr>
+            </thead>
+            <tbody id="preview-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── B. HASIL BATCH (muncul setelah dijalankan) ─── -->
+    <div id="batch-result" style="display:none;">
+
+      <!-- Summary stat cards -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-num" id="stat-total">0</div>
+          <div class="stat-label">Total Data</div>
+        </div>
+        <div class="stat-card success">
+          <div class="stat-num" id="stat-benar">0</div>
+          <div class="stat-label">Prediksi Benar</div>
+        </div>
+        <div class="stat-card danger">
+          <div class="stat-num" id="stat-salah">0</div>
+          <div class="stat-label">Prediksi Salah</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="stat-num" id="stat-akurasi">0%</div>
+          <div class="stat-label">Akurasi Sistem</div>
+        </div>
+      </div>
+
+      <!-- Per-disease accuracy bars -->
+      <div class="card mb-24">
+        <div class="card-title"><div class="icon">📉</div>Akurasi per Penyakit</div>
+        <div id="disease-accuracy-bars"></div>
+      </div>
+
+      <!-- Confusion Matrix -->
+      <div class="card mb-24">
+        <div class="card-title">
+          <div class="icon">🔲</div>Confusion Matrix
+          <span class="text-muted text-sm" style="margin-left:8px;font-weight:400;">Baris = Aktual · Kolom = Prediksi</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="confusion-matrix" id="confusion-matrix-table"></table>
+        </div>
+      </div>
+
+      <!-- Tabel detail hasil -->
+      <div class="card">
+        <div class="card-title">
+          <div class="icon">📋</div>Hasil Detail per Pasien
+          <button class="btn btn-ghost" id="btn-export-csv" onclick="exportHasilCSV()"
+            style="margin-left:auto;padding:7px 16px;font-size:0.78rem;">⬇ Export Hasil CSV</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="batch-table batch-result-table" id="result-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Nama</th><th>Usia</th><th>Gejala</th>
+                <th>Aktual</th><th>Prediksi</th><th>Kepercayaan</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="result-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /batch-result -->
+
+  </div><!-- /tab-batch -->
 
 </main>
 
@@ -884,6 +1004,353 @@ function renderKBMatrix() {
 // ─────────────────────────────────────────────────────────────
 //  UTILITAS
 // ─────────────────────────────────────────────────────────────
+
+/** Escape HTML untuk mencegah XSS */
+function escHTML(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TAB 4: UJI BATCH
+// ─────────────────────────────────────────────────────────────
+
+let dataPasienBatch = [];   // data pasien yang dimuat
+let hasilBatch      = [];   // hasil pengujian
+
+/** Tampilkan status load */
+function updateLoadStatus(msg, type) {
+  const el = document.getElementById('load-status');
+  el.textContent = msg;
+  el.className = 'load-status ' + type;
+}
+
+/** Muat bank data bawaan via fetch */
+async function muatBankData() {
+  updateLoadStatus('⏳ Memuat data...', 'info');
+  try {
+    const res = await fetch('data_pasien.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    dataPasienBatch = data;
+    renderPreviewTable();
+    updateLoadStatus('✅ ' + data.length + ' data pasien dimuat dari bank data bawaan.', 'success');
+  } catch (e) {
+    updateLoadStatus('❌ Gagal memuat bank data: ' + e.message + '. Coba upload manual.', 'error');
+  }
+}
+
+/** Handle upload JSON */
+function handleUploadJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) throw new Error('Harus berupa array JSON.');
+      dataPasienBatch = data;
+      renderPreviewTable();
+      updateLoadStatus('✅ ' + data.length + ' data dimuat dari ' + file.name, 'success');
+    } catch (err) {
+      updateLoadStatus('❌ Format JSON tidak valid: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = ''; // reset input
+}
+
+/** Handle upload CSV */
+function handleUploadCSV(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const lines = ev.target.result.trim().split(/\r?\n/);
+      if (lines.length < 2) throw new Error('File CSV kosong atau hanya header.');
+      const parsed = lines.slice(1).map((line, i) => {
+        // Pisahkan dengan koma, tapi abaikan koma di dalam quotes
+        const cols = line.split(',');
+        return {
+          id:              (cols[0] || '').trim() || ('R' + (i + 1)),
+          nama:            (cols[1] || '').trim() || ('Pasien ' + (i + 1)),
+          usia:            parseInt(cols[2]) || 0,
+          gejala:          (cols[3] || '').trim().split(/\s+/).filter(g => /^G\d+$/.test(g)),
+          diagnosa_aktual: (cols[4] || '').trim(),
+          catatan:         (cols[5] || '').trim(),
+        };
+      }).filter(r => r.gejala.length > 0);
+      dataPasienBatch = parsed;
+      renderPreviewTable();
+      updateLoadStatus('✅ ' + parsed.length + ' data dimuat dari ' + file.name, 'success');
+    } catch (err) {
+      updateLoadStatus('❌ Gagal parsing CSV: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+/** Render tabel preview data pasien */
+function renderPreviewTable() {
+  const wrap  = document.getElementById('preview-wrap');
+  const tbody = document.getElementById('preview-tbody');
+  const count = document.getElementById('preview-count');
+
+  count.textContent = dataPasienBatch.length;
+  tbody.innerHTML = '';
+
+  dataPasienBatch.forEach(p => {
+    const aktualNama = DS.PENYAKIT[p.diagnosa_aktual] || p.diagnosa_aktual || '—';
+    const meta = PENYAKIT_META[p.diagnosa_aktual] || {};
+    const gTags = (p.gejala || []).map(g =>
+      `<span class="g-tag">${escHTML(g)}</span>`
+    ).join('');
+
+    tbody.innerHTML += `
+      <tr>
+        <td class="mono">${escHTML(p.id)}</td>
+        <td>${escHTML(p.nama)}</td>
+        <td class="mono" style="text-align:center">${p.usia || '—'}</td>
+        <td><div class="g-tag-wrap">${gTags}</div></td>
+        <td>
+          <span class="badge-penyakit" style="background:${meta.bg||'rgba(255,255,255,0.05)'};color:${meta.color||'#94a3b8'};border:1px solid ${meta.border||'rgba(255,255,255,0.1)'}">
+            ${escHTML(p.diagnosa_aktual || '—')}
+          </span>
+          <span style="font-size:0.75rem;color:var(--text-muted);margin-left:6px">${escHTML(aktualNama)}</span>
+        </td>
+        <td style="font-size:0.75rem;color:var(--text-muted)">${escHTML(p.catatan || '—')}</td>
+      </tr>`;
+  });
+
+  // Reset hasil lama
+  document.getElementById('batch-result').style.display = 'none';
+  hasilBatch = [];
+  wrap.style.display = 'block';
+}
+
+/** Jalankan pengujian semua data */
+function jalankanBatch() {
+  if (dataPasienBatch.length === 0) {
+    alert('Muat data pasien terlebih dahulu.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-run-batch');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Menghitung...';
+
+  setTimeout(() => {
+    try {
+      hasilBatch = dataPasienBatch.map(pasien => {
+        const gejalaValid = (pasien.gejala || []).filter(g => DS.GEJALA[g]);
+        if (gejalaValid.length === 0) {
+          return { ...pasien, prediksi: null, prediksiNama: 'N/A', kepercayaan: 0, beliefTop: 0, benar: false, allTop: [] };
+        }
+        const hasil    = DS.diagnosa([...gejalaValid].sort());
+        const topItem  = hasil.top[0];
+        const predKode = topItem && topItem.nilai > 0 ? topItem.kode : null;
+        const benar    = predKode !== null && predKode === pasien.diagnosa_aktual;
+        return {
+          ...pasien,
+          gejalaValid,
+          prediksi:     predKode,
+          prediksiNama: predKode ? DS.PENYAKIT[predKode] : 'Tidak terdeteksi',
+          kepercayaan:  topItem ? topItem.nilai * 100  : 0,
+          beliefTop:    topItem ? topItem.belief * 100 : 0,
+          benar,
+          allTop:       hasil.top,
+        };
+      });
+
+      renderHasilBatch();
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '🚀 Jalankan Pengujian';
+    }
+  }, 80);
+}
+
+/** Render semua komponen hasil batch */
+function renderHasilBatch() {
+  const total  = hasilBatch.length;
+  const benar  = hasilBatch.filter(r => r.benar).length;
+  const salah  = total - benar;
+  const akurasi = total > 0 ? (benar / total * 100).toFixed(2) : '0.00';
+
+  // Stat cards
+  document.getElementById('stat-total').textContent   = total;
+  document.getElementById('stat-benar').textContent   = benar;
+  document.getElementById('stat-salah').textContent   = salah;
+  document.getElementById('stat-akurasi').textContent = akurasi + '%';
+
+  // Akurasi per penyakit
+  renderDiseaseAccuracy();
+
+  // Confusion matrix
+  renderConfusionMatrix();
+
+  // Tabel detail
+  renderResultTable();
+
+  document.getElementById('batch-result').style.display = 'block';
+  document.getElementById('batch-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/** Bar chart akurasi per penyakit */
+function renderDiseaseAccuracy() {
+  const pCodes  = Object.keys(DS.PENYAKIT);
+  const container = document.getElementById('disease-accuracy-bars');
+  container.innerHTML = '';
+
+  pCodes.forEach(kode => {
+    const rows  = hasilBatch.filter(r => r.diagnosa_aktual === kode);
+    if (rows.length === 0) return;
+    const benar = rows.filter(r => r.benar).length;
+    const pct   = (benar / rows.length * 100).toFixed(1);
+    const meta  = PENYAKIT_META[kode] || {};
+
+    container.innerHTML += `
+      <div class="bar-item">
+        <div class="bar-header">
+          <span class="bar-label">${meta.icon || ''} ${kode} — ${DS.PENYAKIT[kode]}</span>
+          <span class="bar-val">${benar}/${rows.length} &nbsp; <span style="color:${meta.color||'#94a3b8'}">${pct}%</span></span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill ${benar === rows.length ? 'top-fill' : ''}" style="width:${pct}%;background:${meta.color||'#94a3b8'}"></div>
+        </div>
+      </div>`;
+  });
+}
+
+/** Render confusion matrix 6×6 */
+function renderConfusionMatrix() {
+  const pCodes = Object.keys(DS.PENYAKIT);
+  const table  = document.getElementById('confusion-matrix-table');
+
+  // Bangun matriks count[aktual][prediksi]
+  const matrix = {};
+  pCodes.forEach(a => { matrix[a] = {}; pCodes.forEach(p => { matrix[a][p] = 0; }); });
+  hasilBatch.forEach(r => {
+    const aktual = r.diagnosa_aktual;
+    const pred   = r.prediksi || 'N/A';
+    if (matrix[aktual] !== undefined) {
+      if (pred !== 'N/A' && matrix[aktual][pred] !== undefined) matrix[aktual][pred]++;
+      else if (pred === 'N/A') matrix[aktual]['N/A'] = (matrix[aktual]['N/A'] || 0) + 1;
+    }
+  });
+
+  let html = '<thead><tr><th class="cm-corner">Aktual \\ Prediksi</th>';
+  pCodes.forEach(p => {
+    const meta = PENYAKIT_META[p] || {};
+    html += `<th style="color:${meta.color||'#94a3b8'}">${p}<br><span style="font-size:0.6rem;font-weight:400">${(DS.PENYAKIT[p]||'').split(' ')[0]}</span></th>`;
+  });
+  html += '<th style="color:#ef4444">N/A</th></tr></thead><tbody>';
+
+  pCodes.forEach(a => {
+    const meta = PENYAKIT_META[a] || {};
+    html += `<tr><th style="color:${meta.color||'#94a3b8'};text-align:left;padding:8px 12px;">${a}<br><span style="font-size:0.6rem;font-weight:400">${(DS.PENYAKIT[a]||'').split(' ')[0]}</span></th>`;
+    pCodes.forEach(p => {
+      const val = matrix[a][p] || 0;
+      const cls = a === p ? (val > 0 ? 'cm-correct' : 'cm-diag-zero') : (val > 0 ? 'cm-wrong' : 'cm-zero');
+      html += `<td class="${cls}">${val || '·'}</td>`;
+    });
+    const naVal = matrix[a]['N/A'] || 0;
+    html += `<td class="${naVal > 0 ? 'cm-wrong' : 'cm-zero'}">${naVal || '·'}</td>`;
+    html += '</tr>';
+  });
+
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+/** Render tabel detail hasil per pasien */
+function renderResultTable() {
+  const tbody = document.getElementById('result-tbody');
+  tbody.innerHTML = '';
+
+  hasilBatch.forEach((r, i) => {
+    const metaA = PENYAKIT_META[r.diagnosa_aktual] || {};
+    const metaP = PENYAKIT_META[r.prediksi] || {};
+    const gTags = (r.gejalaValid || r.gejala || []).map(g =>
+      `<span class="g-tag">${escHTML(g)}</span>`
+    ).join('');
+
+    const statusIcon  = r.benar ? '✅' : '❌';
+    const statusClass = r.benar ? 'status-ok' : 'status-fail';
+
+    tbody.innerHTML += `
+      <tr>
+        <td class="mono" style="text-align:center">${i + 1}</td>
+        <td>
+          <div style="font-weight:600">${escHTML(r.nama)}</div>
+          <div class="mono" style="font-size:0.7rem;color:var(--text-muted)">${escHTML(r.id)}</div>
+        </td>
+        <td class="mono" style="text-align:center">${r.usia || '—'}</td>
+        <td><div class="g-tag-wrap">${gTags}</div></td>
+        <td>
+          <span class="badge-penyakit" style="background:${metaA.bg||'rgba(255,255,255,0.05)'};color:${metaA.color||'#94a3b8'};border:1px solid ${metaA.border||'transparent'}">
+            ${escHTML(r.diagnosa_aktual || '—')}
+          </span>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">${escHTML(DS.PENYAKIT[r.diagnosa_aktual] || r.diagnosa_aktual || '—')}</div>
+        </td>
+        <td>
+          <span class="badge-penyakit" style="background:${metaP.bg||'rgba(255,255,255,0.05)'};color:${metaP.color||'#94a3b8'};border:1px solid ${metaP.border||'transparent'}">
+            ${escHTML(r.prediksi || 'N/A')}
+          </span>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">${escHTML(r.prediksiNama || '—')}</div>
+        </td>
+        <td class="mono" style="text-align:right">
+          <div style="color:var(--teal-400)">${r.kepercayaan.toFixed(2)}%</div>
+          <div style="font-size:0.68rem;color:var(--text-muted)">Bel: ${r.beliefTop.toFixed(2)}%</div>
+        </td>
+        <td class="${statusClass}" style="text-align:center;font-size:1.1rem">${statusIcon}</td>
+      </tr>`;
+  });
+}
+
+/** Export hasil pengujian ke CSV */
+function exportHasilCSV() {
+  if (hasilBatch.length === 0) return;
+
+  const total  = hasilBatch.length;
+  const benar  = hasilBatch.filter(r => r.benar).length;
+  const akurasi = (benar / total * 100).toFixed(2);
+
+  let csv = 'No,ID,Nama,Usia,Gejala,Diagnosa_Aktual,Nama_Aktual,Prediksi,Nama_Prediksi,Kepercayaan_Pct,Belief_Pct,Status\n';
+  hasilBatch.forEach((r, i) => {
+    const gejalaStr = (r.gejalaValid || r.gejala || []).join(' ');
+    const row = [
+      i + 1,
+      r.id,
+      '"' + r.nama + '"',
+      r.usia,
+      '"' + gejalaStr + '"',
+      r.diagnosa_aktual || '',
+      '"' + (DS.PENYAKIT[r.diagnosa_aktual] || '') + '"',
+      r.prediksi || 'N/A',
+      '"' + (r.prediksiNama || '') + '"',
+      r.kepercayaan.toFixed(4),
+      r.beliefTop.toFixed(4),
+      r.benar ? 'BENAR' : 'SALAH',
+    ].join(',');
+    csv += row + '\n';
+  });
+  csv += '\n# RINGKASAN\n';
+  csv += `# Total,${total}\n# Benar,${benar}\n# Salah,${total - benar}\n# Akurasi,${akurasi}%\n`;
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'hasil_uji_batch_uroexpert.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 /** Escape HTML untuk mencegah XSS */
 function escHTML(str) {

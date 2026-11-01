@@ -1,0 +1,163 @@
+[
+  {
+    "id": "P001",
+    "nama": "Ahmad Fauzi",
+    "usia": 35,
+    "gejala": ["G01", "G10", "G11", "G17", "G27", "G32"],
+    "diagnosa_aktual": "P01",
+    "catatan": "Kasus dari jurnal — Prostatitis klasik"
+  },
+  {
+    "id": "P002",
+    "nama": "Budi Santoso",
+    "usia": 42,
+    "gejala": ["G02", "G03", "G04", "G05", "G15", "G16", "G30"],
+    "diagnosa_aktual": "P01",
+    "catatan": "Prostatitis dengan gangguan berkemih dominan"
+  },
+  {
+    "id": "P003",
+    "nama": "Cahyo Purnomo",
+    "usia": 50,
+    "gejala": ["G01", "G06", "G15", "G16", "G21", "G27"],
+    "diagnosa_aktual": "P01",
+    "catatan": "Prostatitis dengan hematuria"
+  },
+  {
+    "id": "P004",
+    "nama": "Deni Kurniawan",
+    "usia": 38,
+    "gejala": ["G03", "G04", "G05", "G18", "G30", "G35"],
+    "diagnosa_aktual": "P01",
+    "catatan": "Prostatitis kronis dengan nyeri pelvik"
+  },
+  {
+    "id": "P005",
+    "nama": "Eko Wijaya",
+    "usia": 28,
+    "gejala": ["G07", "G08", "G10", "G11", "G22", "G29"],
+    "diagnosa_aktual": "P02",
+    "catatan": "Epididimitis akut dengan skrotum merah"
+  },
+  {
+    "id": "P006",
+    "nama": "Fajar Hidayat",
+    "usia": 31,
+    "gejala": ["G07", "G10", "G11", "G23", "G27", "G31"],
+    "diagnosa_aktual": "P02",
+    "catatan": "Epididimitis dengan cairan abnormal"
+  },
+  {
+    "id": "P007",
+    "nama": "Gunawan Saputra",
+    "usia": 25,
+    "gejala": ["G08", "G10", "G11", "G22", "G26", "G29", "G32"],
+    "diagnosa_aktual": "P02",
+    "catatan": "Epididimitis muda dengan infertilitas"
+  },
+  {
+    "id": "P008",
+    "nama": "Hendra Pratama",
+    "usia": 33,
+    "gejala": ["G07", "G08", "G23", "G27", "G31", "G32"],
+    "diagnosa_aktual": "P02",
+    "catatan": "Epididimitis subakut"
+  },
+  {
+    "id": "P009",
+    "nama": "Irfan Maulana",
+    "usia": 22,
+    "gejala": ["G07", "G08", "G09", "G10", "G11", "G28"],
+    "diagnosa_aktual": "P03",
+    "catatan": "Orkitis bilateral pasca mumps"
+  },
+  {
+    "id": "P010",
+    "nama": "Joko Susilo",
+    "usia": 27,
+    "gejala": ["G07", "G09", "G10", "G27", "G28", "G29"],
+    "diagnosa_aktual": "P03",
+    "catatan": "Orkitis dengan demam tinggi"
+  },
+  {
+    "id": "P011",
+    "nama": "Kevin Andrean",
+    "usia": 19,
+    "gejala": ["G08", "G09", "G11", "G27", "G28"],
+    "diagnosa_aktual": "P03",
+    "catatan": "Orkitis viral unilateral"
+  },
+  {
+    "id": "P012",
+    "nama": "Lukman Hakim",
+    "usia": 24,
+    "gejala": ["G01", "G02", "G22", "G23", "G24", "G25"],
+    "diagnosa_aktual": "P04",
+    "catatan": "Uretritis gonore — cairan khas"
+  },
+  {
+    "id": "P013",
+    "nama": "Muhammad Rizky",
+    "usia": 29,
+    "gejala": ["G01", "G24", "G25", "G26"],
+    "diagnosa_aktual": "P04",
+    "catatan": "Uretritis non-spesifik ringan"
+  },
+  {
+    "id": "P014",
+    "nama": "Nanda Prasetya",
+    "usia": 32,
+    "gejala": ["G02", "G22", "G23", "G25", "G26"],
+    "diagnosa_aktual": "P04",
+    "catatan": "Uretritis klamidia"
+  },
+  {
+    "id": "P015",
+    "nama": "Oscar Firmansyah",
+    "usia": 26,
+    "gejala": ["G07", "G08", "G12", "G13", "G14", "G35"],
+    "diagnosa_aktual": "P05",
+    "catatan": "Varikokel derajat 2 — pembuluh berkelok"
+  },
+  {
+    "id": "P016",
+    "nama": "Putra Ramadhan",
+    "usia": 23,
+    "gejala": ["G12", "G13", "G14", "G29", "G31", "G32"],
+    "diagnosa_aktual": "P05",
+    "catatan": "Varikokel dengan keluhan infertilitas"
+  },
+  {
+    "id": "P017",
+    "nama": "Qodir Fathurrahman",
+    "usia": 30,
+    "gejala": ["G07", "G13", "G14", "G31", "G35"],
+    "diagnosa_aktual": "P05",
+    "catatan": "Varikokel kanan nyeri saat berdiri"
+  },
+  {
+    "id": "P018",
+    "nama": "Rudi Hartanto",
+    "usia": 45,
+    "gejala": ["G17", "G19", "G20", "G21", "G33"],
+    "diagnosa_aktual": "P06",
+    "catatan": "Disfungsi ereksi psikogenik"
+  },
+  {
+    "id": "P019",
+    "nama": "Surya Dinata",
+    "usia": 52,
+    "gejala": ["G18", "G19", "G20", "G21", "G34"],
+    "diagnosa_aktual": "P06",
+    "catatan": "Disfungsi ereksi organik usia lanjut"
+  },
+  {
+    "id": "P020",
+    "nama": "Taufik Hidayatullah",
+    "usia": 40,
+    "gejala": ["G17", "G18", "G19", "G20", "G33", "G34"],
+    "diagnosa_aktual": "P06",
+    "catatan": "Disfungsi ereksi berat"
+  }
+]
+
