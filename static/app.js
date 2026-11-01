@@ -1,9 +1,3 @@
-/**
- * app.js - Frontend & Standalone Certainty Factor Inference Engine
- * Sistem Pakar Kardiovaskular — 100% Client-Side (GitHub Pages Ready)
- * Sumber Basis Pengetahuan: Ajisari & Prasetyaningrum (2024)
- */
-
 // ===============================================================
 // 1. KNOWLEDGE BASE (BASIS PENGETAHUAN LENGKAP)
 // ===============================================================

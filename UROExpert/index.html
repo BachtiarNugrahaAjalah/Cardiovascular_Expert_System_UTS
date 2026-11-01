@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UROExpert — Sistem Pakar Gangguan Reproduksi Pria</title>
+  <meta name="description" content="Sistem pakar berbasis Dempster-Shafer untuk diagnosa gangguan reproduksi pria. 100% client-side." />
+  <link rel="stylesheet" href="style.css" />
+  <script src="dempster_shafer.js" defer></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ HEADER ═══════════════════════════════ -->
+<header>
+  <div class="header-inner">
+    <div class="logo-icon">🔬</div>
+    <div class="logo-text">
+      <h1>UROExpert</h1>
+      <p>Sistem Pakar Diagnosa Gangguan Reproduksi Pria · Metode Dempster-Shafer</p>
+    </div>
+    <div class="header-badge">
+      <div class="badge-dot"></div>
+      Client-Side · No Backend
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════ TABS ═════════════════════════════════ -->
+<nav class="nav-tabs" role="navigation" aria-label="Tab navigasi">
+  <div class="nav-tabs-inner">
+    <button class="tab-btn active" data-tab="diagnosis" onclick="switchTab('diagnosis')">
+      🩺 <span class="tab-label">Diagnosis</span>
+    </button>
+    <button class="tab-btn" data-tab="stepbystep" onclick="switchTab('stepbystep')">
+      📊 <span class="tab-label">Langkah DS</span>
+    </button>
+    <button class="tab-btn" data-tab="knowledge" onclick="switchTab('knowledge')">
+      📚 <span class="tab-label">Basis Pengetahuan</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════ MAIN ═════════════════════════════════ -->
+<main>
+
+  <!-- ──────────────────── TAB 1: DIAGNOSIS ──────────────────── -->
+  <div id="tab-diagnosis" class="tab-panel active">
+
+    <div class="section-header">
+      <h2>🩺 Diagnosis Gangguan Reproduksi</h2>
+      <p>Pilih gejala yang dialami, lalu klik <strong>Diagnosa</strong> untuk melihat hasil analisis Dempster-Shafer.</p>
+    </div>
+
+    <!-- Info banner -->
+    <div class="info-banner teal mb-24">
+      <span>💡</span>
+      <span>Pilih minimal <strong>1 gejala</strong>. Semakin banyak gejala relevan yang dipilih, semakin akurat hasilnya. Gunakan <strong>Contoh Kasus Jurnal</strong> untuk uji coba cepat.</span>
+    </div>
+
+    <!-- Symptom grid — akan di-render oleh JS -->
+    <div id="symptom-grid" class="symptom-grid" role="group" aria-label="Daftar gejala"></div>
+
+    <!-- Action bar -->
+    <div class="action-bar">
+      <button class="btn btn-ghost" onclick="resetGejala()">🔄 Reset</button>
+      <button class="btn btn-secondary" onclick="loadKasusJurnal()">📋 Contoh Kasus Jurnal</button>
+      <button class="btn btn-primary" id="btn-diagnosa" onclick="jalankanDiagnosa()">
+        🔍 Diagnosa
+      </button>
+      <div class="counter-badge">Dipilih: <span id="count-selected">0</span> / 35 gejala</div>
+    </div>
+
+    <!-- ─── RESULT SECTION ─── -->
+    <div id="result-section">
+
+      <!-- Top diagnosis -->
+      <div id="top-diagnosis-box" class="top-diagnosis slide-up">
+        <div class="top-label">⚕️ Diagnosa Utama</div>
+        <div id="top-name" class="top-name">—</div>
+        <div id="top-pct" class="top-pct">—</div>
+        <div id="top-desc" class="top-desc">—</div>
+      </div>
+
+      <div class="grid-2 mb-24">
+        <!-- Bar Chart -->
+        <div class="card slide-up" style="animation-delay:0.1s">
+          <div class="card-title">
+            <div class="icon">📊</div>
+            Nilai Massa Final (m)
+          </div>
+          <div id="bar-list" class="bar-list"></div>
+        </div>
+
+        <!-- Belief & Plausibility Table -->
+        <div class="card slide-up" style="animation-delay:0.15s">
+          <div class="card-title">
+            <div class="icon">📐</div>
+            Belief &amp; Plausibility
+          </div>
+          <div style="overflow-x:auto">
+            <table class="bp-table" id="bp-table">
+              <thead>
+                <tr>
+                  <th>Penyakit</th>
+                  <th>Bel(A)</th>
+                  <th>Pl(A)</th>
+                  <th>Interval</th>
+                </tr>
+              </thead>
+              <tbody id="bp-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DS Steps Accordion -->
+      <div class="card slide-up" style="animation-delay:0.2s; margin-bottom:24px;">
+        <div class="card-title">
+          <div class="icon">⚙️</div>
+          Langkah-Langkah Dempster-Shafer
+          <button class="btn btn-ghost" style="margin-left:auto;padding:6px 14px;font-size:0.75rem;"
+            onclick="toggleAllSteps()">Buka/Tutup Semua</button>
+        </div>
+
+        <div class="formula-block mb-16">
+          <span class="hl">Aturan Kombinasi:</span><br>
+          m₁₂(Z) = <span class="hl">Σ</span><sub>X∩Y=Z</sub> m₁(X)·m₂(Y)  /  (1 − K)<br>
+          K = <span class="hl-warn">Σ</span><sub>X∩Y=∅</sub> m₁(X)·m₂(Y)  <span style="color:#475569">← faktor konflik</span>
+        </div>
+
+        <div id="steps-accordion" class="steps-accordion"></div>
+      </div>
+
+      <!-- Rekomendasi -->
+      <div class="card slide-up" style="animation-delay:0.25s;">
+        <div class="card-title">
+          <div class="icon">💊</div>
+          Rekomendasi Penanganan
+        </div>
+        <div id="rekomendasi-list"></div>
+        <div class="info-banner warn" style="margin-top:16px;margin-bottom:0;">
+          <span>⚠️</span>
+          <span>Rekomendasi di atas hanya bersifat informatif. Selalu konsultasikan kondisi Anda dengan dokter atau tenaga medis profesional.</span>
+        </div>
+      </div>
+
+    </div><!-- /result-section -->
+
+  </div><!-- /tab-diagnosis -->
+
+  <!-- ──────────────────── TAB 2: LANGKAH DS ──────────────────── -->
+  <div id="tab-stepbystep" class="tab-panel">
+
+    <div class="section-header">
+      <h2>📊 Langkah Dempster-Shafer Step-by-Step</h2>
+      <p>Navigasi setiap langkah kombinasi massa secara interaktif.</p>
+    </div>
+
+    <div id="sbs-empty" class="empty-state card">
+      <div class="icon">🧮</div>
+      <h3>Belum ada hasil diagnosa</h3>
+      <p>Jalankan diagnosa pada tab <strong>Diagnosis</strong> terlebih dahulu untuk melihat visualisasi langkah-langkah Dempster-Shafer.</p>
+    </div>
+
+    <div id="sbs-main" style="display:none;">
+
+      <!-- Navigation -->
+      <div class="sbs-nav">
+        <button class="btn btn-ghost" id="btn-prev" onclick="sbsNav(-1)" disabled>← Sebelumnya</button>
+        <button class="btn btn-ghost" id="btn-next" onclick="sbsNav(+1)">Berikutnya →</button>
+        <div class="step-indicator">Langkah <span id="sbs-current">1</span> / <span id="sbs-total">1</span></div>
+      </div>
+
+      <!-- Step content -->
+      <div id="sbs-content"></div>
+
+      <!-- Final result box -->
+      <div class="card" id="sbs-final" style="margin-top:20px;display:none;">
+        <div class="card-title"><div class="icon">🏆</div>Massa Final (Semua Langkah Selesai)</div>
+        <div id="sbs-final-table"></div>
+      </div>
+
+    </div>
+
+  </div><!-- /tab-stepbystep -->
+
+  <!-- ──────────────────── TAB 3: BASIS PENGETAHUAN ──────────────────── -->
+  <div id="tab-knowledge" class="tab-panel">
+
+    <div class="section-header">
+      <h2>📚 Basis Pengetahuan</h2>
+      <p>Data penyakit, gejala, dan bobot belief pakar yang digunakan oleh sistem.</p>
+    </div>
+
+    <!-- Disease cards -->
+    <div class="disease-grid" id="disease-grid"></div>
+
+    <!-- Gejala × Penyakit Matrix -->
+    <div class="card">
+      <div class="card-title">
+        <div class="icon">📋</div>
+        Matriks Gejala × Penyakit
+        <span class="text-muted text-sm" style="margin-left:8px;font-weight:400;">(G01–G35 × P01–P06 dengan bobot belief)</span>
+      </div>
+      <div class="matrix-wrap">
+        <table class="kb-matrix" id="kb-matrix">
+          <thead>
+            <tr id="kb-matrix-header"></tr>
+          </thead>
+          <tbody id="kb-matrix-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Formula explanation -->
+    <div class="card" style="margin-top:20px;">
+      <div class="card-title"><div class="icon">📐</div>Penjelasan Metode</div>
+      <div class="grid-2">
+        <div>
+          <p class="text-sm text-muted mb-8"><strong style="color:var(--text-primary)">Fungsi Massa Dasar</strong></p>
+          <div class="formula-block">
+            m{A} = <span class="hl">belief</span> (bobot pakar)<br>
+            m{Θ} = <span class="hl">1 − belief</span> (ketidakpastian)<br>
+            di mana A = set penyakit terkait gejala
+          </div>
+          <p class="text-sm text-muted mb-8"><strong style="color:var(--text-primary)">Aturan Kombinasi Dempster</strong></p>
+          <div class="formula-block">
+            m₁₂(Z) = <span class="hl">Σ<sub>X∩Y=Z</sub></span> m₁(X)·m₂(Y) / (1−K)<br>
+            K = <span class="hl-warn">Σ<sub>X∩Y=∅</sub></span> m₁(X)·m₂(Y)
+          </div>
+        </div>
+        <div>
+          <p class="text-sm text-muted mb-8"><strong style="color:var(--text-primary)">Belief &amp; Plausibility</strong></p>
+          <div class="formula-block">
+            Bel(A) = <span class="hl">Σ<sub>B⊆A</sub></span> m(B)<br>
+            Pl(A)  = <span class="hl">Σ<sub>B∩A≠∅</sub></span> m(B)<br><br>
+            <span style="color:#475569">Bel(A) ≤ kemungkinan sebenarnya ≤ Pl(A)</span>
+          </div>
+          <p class="text-sm text-muted mb-8"><strong style="color:var(--text-primary)">Frame of Discernment (Θ)</strong></p>
+          <div class="formula-block">
+            Θ = {P01, P02, P03, P04, P05, P06}<br>
+            <span style="color:#475569">= himpunan semua hipotesis yang mungkin</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-knowledge -->
+
+</main>
+
+<!-- ═══════════════════════════════ FOOTER ═══════════════════════════════ -->
+<footer>
+  <div class="footer-inner">
+    <div class="disclaimer">
+      <strong>⚠️ Disclaimer Medis:</strong> UROExpert adalah alat bantu edukatif berbasis sistem pakar dan <em>tidak menggantikan</em> konsultasi, pemeriksaan, atau diagnosa dokter/tenaga medis profesional. Hasil sistem ini hanya bersifat informatif dan tidak boleh digunakan sebagai dasar tindakan medis. Jika mengalami keluhan, segera konsultasikan dengan dokter urologi atau dokter umum terdekat.
+    </div>
+    <div class="footer-info">
+      <span>UROExpert</span><br>
+      Dempster-Shafer<br>
+      Expert System<br>
+      100% Client-Side<br>
+      GitHub Pages Ready
+    </div>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════════ SCRIPTS ═══════════════════════════════ -->
+<script>
+// ─────────────────────────────────────────────────────────────
+//  Warna dan deskripsi per penyakit (untuk UI)
+// ─────────────────────────────────────────────────────────────
+const PENYAKIT_META = {
+  P01: { icon:'🔴', color:'#a5b4fc', bg:'rgba(99,102,241,0.15)', border:'rgba(99,102,241,0.3)',  desc:'Peradangan kelenjar prostat, sering menyebabkan nyeri saat berkemih dan gangguan saluran kemih.' },
+  P02: { icon:'🟡', color:'#2dd4bf', bg:'rgba(20,184,166,0.15)', border:'rgba(20,184,166,0.3)',  desc:'Peradangan epididimis (saluran di belakang testis), umumnya akibat infeksi bakteri.' },
+  P03: { icon:'🟠', color:'#fcd34d', bg:'rgba(245,158,11,0.15)', border:'rgba(245,158,11,0.3)',  desc:'Peradangan testis, dapat disebabkan oleh virus (misalnya gondongan) atau bakteri.' },
+  P04: { icon:'🔴', color:'#fca5a5', bg:'rgba(239,68,68,0.15)',  border:'rgba(239,68,68,0.3)',   desc:'Peradangan uretra (saluran kencing), sering ditandai dengan keluarnya cairan tidak normal.' },
+  P05: { icon:'🔵', color:'#93c5fd', bg:'rgba(59,130,246,0.15)', border:'rgba(59,130,246,0.3)',  desc:'Pembengkakan pembuluh darah vena di skrotum, dapat memengaruhi kesuburan pria.' },
+  P06: { icon:'🟣', color:'#d8b4fe', bg:'rgba(168,85,247,0.15)', border:'rgba(168,85,247,0.3)',  desc:'Ketidakmampuan atau kesulitan mencapai/mempertahankan ereksi yang cukup untuk aktivitas seksual.' },
+};
+
+// State aplikasi
+let gejalaTerpilih   = new Set();  // kode gejala yang dipilih user
+let hasilDiagnosa    = null;       // objek hasil DS.diagnosa(...)
+let sbsStepIndex     = 0;          // indeks langkah step-by-step
+let allStepsOpen     = false;      // toggle accordion semua langkah
+
+// ─────────────────────────────────────────────────────────────
+//  INISIALISASI — tunggu DS siap
+// ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  renderSymptomGrid();
+  renderDiseaseCards();
+  renderKBMatrix();
+});
+
+// ─────────────────────────────────────────────────────────────
+//  TAB NAVIGATION
+// ─────────────────────────────────────────────────────────────
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tabName).classList.add('active');
+  document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+  // Jika pindah ke step-by-step, render konten
+  if (tabName === 'stepbystep' && hasilDiagnosa) {
+    renderSBSStep(sbsStepIndex);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TAB 1: DIAGNOSIS
+// ─────────────────────────────────────────────────────────────
+
+/** Render grid checkbox gejala */
+function renderSymptomGrid() {
+  const grid = document.getElementById('symptom-grid');
+  grid.innerHTML = '';
+
+  for (const [kode, data] of Object.entries(DS.GEJALA)) {
+    const [nama, penyakitSet, belief] = data;
+    const card = document.createElement('div');
+    card.className = 'symptom-card';
+    card.id = 'card-' + kode;
+    card.setAttribute('role', 'checkbox');
+    card.setAttribute('aria-checked', 'false');
+    card.setAttribute('tabindex', '0');
+    card.onclick = () => toggleGejala(kode);
+    card.onkeydown = (e) => { if (e.key === ' ' || e.key === 'Enter') toggleGejala(kode); };
+
+    // Tags penyakit terkait
+    const tags = [...penyakitSet].sort().map(p =>
+      `<span class="stag stag-${p}">${p}</span>`
+    ).join('');
+
+    card.innerHTML = `
+      <div class="symptom-check" id="check-${kode}"></div>
+      <div class="symptom-content">
+        <div class="symptom-code">${kode} · bobot: ${belief.toFixed(1)}</div>
+        <div class="symptom-name">${nama}</div>
+        <div class="symptom-tags">${tags}</div>
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+}
+
+/** Toggle pilihan gejala */
+function toggleGejala(kode) {
+  if (gejalaTerpilih.has(kode)) {
+    gejalaTerpilih.delete(kode);
+    document.getElementById('card-' + kode).classList.remove('selected');
+    document.getElementById('card-' + kode).setAttribute('aria-checked', 'false');
+  } else {
+    gejalaTerpilih.add(kode);
+    document.getElementById('card-' + kode).classList.add('selected');
+    document.getElementById('card-' + kode).setAttribute('aria-checked', 'true');
+  }
+  document.getElementById('count-selected').textContent = gejalaTerpilih.size;
+}
+
+/** Reset semua pilihan */
+function resetGejala() {
+  gejalaTerpilih.forEach(kode => {
+    document.getElementById('card-' + kode).classList.remove('selected');
+    document.getElementById('card-' + kode).setAttribute('aria-checked', 'false');
+  });
+  gejalaTerpilih.clear();
+  document.getElementById('count-selected').textContent = '0';
+  document.getElementById('result-section').classList.remove('visible');
+  hasilDiagnosa = null;
+}
+
+/** Muat kasus contoh dari jurnal */
+function loadKasusJurnal() {
+  resetGejala();
+  DS.KASUS_JURNAL.forEach(kode => {
+    gejalaTerpilih.add(kode);
+    document.getElementById('card-' + kode).classList.add('selected');
+    document.getElementById('card-' + kode).setAttribute('aria-checked', 'true');
+  });
+  document.getElementById('count-selected').textContent = gejalaTerpilih.size;
+
+  // Scroll ke atas grid
+  document.getElementById('symptom-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/** Jalankan algoritma Dempster-Shafer */
+function jalankanDiagnosa() {
+  if (gejalaTerpilih.size === 0) {
+    alert('Silakan pilih minimal satu gejala terlebih dahulu.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-diagnosa');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Menghitung...';
+
+  // Gunakan setTimeout agar spinner sempat tampil
+  setTimeout(() => {
+    try {
+      // Urutkan kode gejala sesuai urutan G01-G35
+      const kodeUrut = [...gejalaTerpilih].sort();
+      hasilDiagnosa = DS.diagnosa(kodeUrut);
+      sbsStepIndex = 0;
+
+      renderHasil(hasilDiagnosa);
+      document.getElementById('result-section').classList.add('visible');
+      document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Aktifkan tab step-by-step
+      renderSBSMain();
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '🔍 Diagnosa';
+    }
+  }, 80);
+}
+
+/** Render semua komponen hasil */
+function renderHasil(hasil) {
+  const { top, massaFinal, beliefMap, plausibilityMap, steps } = hasil;
+
+  // ─ Top diagnosis ─
+  const topItem = top[0];
+  document.getElementById('top-name').textContent = topItem.nama;
+  const pct = (topItem.nilai * 100).toFixed(2);
+  document.getElementById('top-pct').textContent =
+    `Nilai Massa: ${pct}%  ·  Belief: ${(topItem.belief * 100).toFixed(2)}%  ·  Plausibility: ${(topItem.plausibility * 100).toFixed(2)}%`;
+  document.getElementById('top-desc').textContent =
+    '💊 Rekomendasi: ' + (DS.SOLUSI[topItem.kode] || '—');
+
+  // ─ Bar chart ─
+  const barList = document.getElementById('bar-list');
+  barList.innerHTML = '';
+  const maxVal = Math.max(...top.map(t => t.nilai), 0.001);
+
+  top.forEach((item, i) => {
+    const pctVal = (item.nilai * 100).toFixed(2);
+    const widthPct = (item.nilai / maxVal * 100).toFixed(1);
+    const isTop = i === 0;
+    const meta = PENYAKIT_META[item.kode];
+
+    barList.innerHTML += `
+      <div class="bar-item">
+        <div class="bar-header">
+          <span class="bar-label">${meta.icon} ${item.nama} <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted)">(${item.kode})</span></span>
+          <span class="bar-val">${pctVal}%</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill ${isTop ? 'top-fill' : ''}" id="bar-${item.kode}" data-width="${widthPct}"></div>
+        </div>
+      </div>
+    `;
+  });
+
+  // Animasi bar
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.bar-fill').forEach(el => {
+        el.style.width = el.dataset.width + '%';
+      });
+    });
+  });
+
+  // ─ Belief & Plausibility table ─
+  const tbody = document.getElementById('bp-tbody');
+  tbody.innerHTML = '';
+  top.forEach(item => {
+    const bel = (beliefMap[item.kode] * 100).toFixed(4);
+    const pl  = (plausibilityMap[item.kode] * 100).toFixed(4);
+    const meta = PENYAKIT_META[item.kode];
+    tbody.innerHTML += `
+      <tr>
+        <td>
+          <span class="badge-penyakit" style="background:${meta.bg};color:${meta.color};border:1px solid ${meta.border}">
+            ${item.kode}
+          </span>
+          <span style="margin-left:8px;font-size:0.8rem;">${item.nama}</span>
+        </td>
+        <td class="mono" style="color:${meta.color}">${bel}%</td>
+        <td class="mono" style="color:#94a3b8">${pl}%</td>
+        <td class="mono" style="font-size:0.7rem;color:var(--text-muted)">[${bel}%, ${pl}%]</td>
+      </tr>
+    `;
+  });
+
+  // ─ Steps accordion ─
+  renderStepsAccordion(steps);
+
+  // ─ Rekomendasi ─
+  const rekBox = document.getElementById('rekomendasi-list');
+  rekBox.innerHTML = '';
+
+  // Tampilkan top 3 yang punya nilai > 0
+  const topFiltered = top.filter(t => t.nilai > 0).slice(0, 3);
+  topFiltered.forEach((item, i) => {
+    const meta = PENYAKIT_META[item.kode];
+    rekBox.innerHTML += `
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:16px;background:rgba(0,0,0,0.2);border-radius:10px;margin-bottom:10px;border:1px solid ${meta.border};">
+        <div style="width:36px;height:36px;background:${meta.bg};border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${meta.icon}</div>
+        <div>
+          <div style="font-weight:700;color:${meta.color};margin-bottom:4px;">
+            ${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} ${item.kode} — ${item.nama}
+            <span style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-muted);margin-left:8px;">m = ${(item.nilai*100).toFixed(2)}%</span>
+          </div>
+          <div style="font-size:0.81rem;color:var(--text-secondary);line-height:1.6;">${DS.SOLUSI[item.kode] || '—'}</div>
+        </div>
+      </div>
+    `;
+  });
+
+  if (topFiltered.length === 0) {
+    rekBox.innerHTML = '<p class="text-muted text-sm">Tidak ada penyakit dengan nilai massa signifikan.</p>';
+  }
+}
+
+/** Render accordion langkah-langkah DS */
+function renderStepsAccordion(steps) {
+  const acc = document.getElementById('steps-accordion');
+  acc.innerHTML = '';
+
+  steps.forEach((step, idx) => {
+    const isInit = step.iterasi === 0;
+    const konflikPct = (step.konflik * 100).toFixed(4);
+
+    const item = document.createElement('div');
+    item.className = 'step-item';
+    item.id = 'step-acc-' + idx;
+
+    let headerContent = `
+      <div class="step-num">${isInit ? '0' : step.iterasi}</div>
+      <div class="step-title">${escHTML(step.label)}</div>
+    `;
+
+    if (!isInit) {
+      headerContent += `<div class="step-konflik">K = ${konflikPct}%</div>`;
+    }
+    headerContent += `<div class="step-chevron">▼</div>`;
+
+    item.innerHTML = `
+      <div class="step-header" onclick="toggleStep(${idx})">
+        ${headerContent}
+      </div>
+      <div class="step-body">
+        ${buildStepBody(step)}
+      </div>
+    `;
+    acc.appendChild(item);
+  });
+
+  // Buka langkah terakhir secara default
+  const lastIdx = steps.length - 1;
+  if (lastIdx >= 0) {
+    document.getElementById('step-acc-' + lastIdx).classList.add('open');
+  }
+}
+
+/** Bangun konten body sebuah langkah */
+function buildStepBody(step) {
+  const isInit = step.iterasi === 0;
+
+  if (isInit) {
+    // Langkah 0: tampilkan massa awal
+    return `
+      <p class="text-sm text-muted mb-12">Massa dasar dari gejala pertama <strong>${step.m2Label}</strong>:</p>
+      ${buildMassTable(step.hasil)}
+    `;
+  }
+
+  let html = '';
+
+  // Tabel m1
+  html += `<p class="text-sm text-muted mb-8"><strong style="color:var(--text-primary)">m₁</strong> (massa kumulatif sebelumnya):</p>`;
+  html += buildMassTable(step.m1);
+
+  // Tabel m2
+  html += `<p class="text-sm text-muted mb-8" style="margin-top:14px;"><strong style="color:var(--text-primary)">m₂</strong> — Gejala <strong>${step.m2Label}</strong> (${escHTML(DS.GEJALA[step.m2Label][0])}):</p>`;
+  html += buildMassTable(step.m2);
+
+  // Tabel perkalian m1 × m2
+  html += `<p class="text-sm text-muted mb-8" style="margin-top:14px;"><strong style="color:var(--text-primary)">Tabel Perkalian m₁ × m₂:</strong></p>`;
+  html += buildMultiplicationMatrix(step.m1, step.m2, step.tabelPerkalian);
+
+  // Nilai K dan normalizer
+  const normalizer = 1 - step.konflik;
+  html += `
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin:14px 0;">
+      <div class="konflik-badge">⚡ K (konflik) = ${(step.konflik * 100).toFixed(6)}%</div>
+      <div class="normalizer-badge">÷ (1 − K) = ${normalizer.toFixed(6)}</div>
+    </div>
+  `;
+
+  // Hasil kombinasi
+  html += `<p class="text-sm text-muted mb-8"><strong style="color:var(--text-primary)">Hasil m₁₂ = m₁ ⊕ m₂ (setelah normalisasi):</strong></p>`;
+  html += buildMassTable(step.hasil);
+
+  return html;
+}
+
+/** Render tabel massa { key → nilai } */
+function buildMassTable(m) {
+  if (!m || Object.keys(m).length === 0) return '<p class="text-muted text-sm">—</p>';
+  let html = `<table class="massa-table"><thead><tr><th>Himpunan</th><th>Key</th><th>Massa m(·)</th></tr></thead><tbody>`;
+  const sorted = Object.entries(m).sort((a,b) => b[1] - a[1]);
+  sorted.forEach(([key, val]) => {
+    if (key === 'CONFLICT') return;
+    const label = DS.labelKey(key);
+    html += `
+      <tr>
+        <td style="color:var(--text-primary)">${escHTML(label)}</td>
+        <td style="color:var(--text-muted);font-size:0.7rem">${escHTML(key)}</td>
+        <td style="color:var(--teal-400);font-weight:700">${val.toFixed(6)}</td>
+      </tr>
+    `;
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+/** Render tabel perkalian m1 × m2 */
+function buildMultiplicationMatrix(m1, m2, perkalian) {
+  const keys1 = Object.keys(m1).filter(k => k !== 'CONFLICT');
+  const keys2 = Object.keys(m2).filter(k => k !== 'CONFLICT');
+
+  let html = `<div class="mul-matrix-wrap"><table class="mul-matrix">`;
+
+  // Header row: keys m2
+  html += `<thead><tr><th class="header-corner">m₁ \\ m₂</th>`;
+  keys2.forEach(k2 => {
+    html += `<th title="${k2}">${escHTML(DS.labelKey(k2))}<br><span style="font-size:0.6rem;font-weight:400;color:var(--text-muted)">${escHTML(k2)}</span></th>`;
+  });
+  html += `</tr></thead><tbody>`;
+
+  // Body rows: keys m1 × m2 values
+  keys1.forEach(k1 => {
+    html += `<tr><th style="text-align:left;" title="${k1}">${escHTML(DS.labelKey(k1))}<br><span style="font-size:0.6rem;font-weight:400;color:var(--text-muted)">${escHTML(k1)}</span></th>`;
+
+    keys2.forEach(k2 => {
+      const cell = perkalian.find(p => p.keyA === k1 && p.keyB === k2);
+      const irisan = cell ? cell.irisan : DS.intersectKeys ? '?' : '?';
+      const produk = cell ? cell.produk : 0;
+      const iriLabel = cell ? DS.labelKey(cell.irisan) : '?';
+
+      let cls = '';
+      if (cell && cell.irisan === 'EMPTY')    cls = 'intersect-empty';
+      else if (cell && cell.irisan === DS.THETA_KEY) cls = 'intersect-theta';
+      else cls = 'intersect-single';
+
+      html += `
+        <td>
+          <div class="${cls}">${escHTML(iriLabel)}</div>
+          <div class="val-cell">${(m1[k1] || 0).toFixed(4)} × ${(m2[k2] || 0).toFixed(4)}</div>
+          <div class="val-cell" style="color:var(--teal-400);font-weight:700">${produk.toFixed(6)}</div>
+        </td>
+      `;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  return html;
+}
+
+/** Toggle satu item accordion */
+function toggleStep(idx) {
+  const item = document.getElementById('step-acc-' + idx);
+  item.classList.toggle('open');
+}
+
+/** Toggle semua accordion */
+function toggleAllSteps() {
+  allStepsOpen = !allStepsOpen;
+  document.querySelectorAll('.step-item').forEach(el => {
+    if (allStepsOpen) el.classList.add('open');
+    else el.classList.remove('open');
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TAB 2: STEP-BY-STEP
+// ─────────────────────────────────────────────────────────────
+
+/** Siapkan tampilan SBS setelah diagnosa selesai */
+function renderSBSMain() {
+  if (!hasilDiagnosa) return;
+  document.getElementById('sbs-empty').style.display = 'none';
+  document.getElementById('sbs-main').style.display  = 'block';
+  document.getElementById('sbs-total').textContent   = hasilDiagnosa.steps.length;
+  sbsStepIndex = 0;
+  renderSBSStep(0);
+}
+
+/** Navigasi prev/next step-by-step */
+function sbsNav(delta) {
+  if (!hasilDiagnosa) return;
+  const max = hasilDiagnosa.steps.length - 1;
+  sbsStepIndex = Math.max(0, Math.min(max, sbsStepIndex + delta));
+  renderSBSStep(sbsStepIndex);
+}
+
+/** Render konten SBS untuk satu langkah */
+function renderSBSStep(idx) {
+  if (!hasilDiagnosa) return;
+  const steps = hasilDiagnosa.steps;
+  const step  = steps[idx];
+  if (!step) return;
+
+  document.getElementById('sbs-current').textContent = idx + 1;
+  document.getElementById('btn-prev').disabled = idx === 0;
+  document.getElementById('btn-next').disabled = idx === steps.length - 1;
+
+  const isInit = step.iterasi === 0;
+  const konflikPct = (step.konflik * 100).toFixed(6);
+  const normalizer = (1 - step.konflik).toFixed(6);
+
+  let html = `<div class="sbs-content">`;
+
+  // ─ Judul langkah ─
+  html += `
+    <div class="sbs-card">
+      <div class="sbs-title">
+        <span style="background:rgba(20,184,166,0.15);color:var(--teal-400);width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:0.8rem;font-weight:700;">${isInit ? '0' : idx}</span>
+        ${escHTML(step.label)}
+      </div>
+      <div class="sbs-subtitle">
+        ${isInit
+          ? 'Inisialisasi fungsi massa dasar dari gejala pertama. Belum ada kombinasi.'
+          : `Menggabungkan massa kumulatif dengan gejala baru menggunakan Aturan Dempster.`}
+      </div>
+  `;
+
+  if (isInit) {
+    // Tampilkan massa awal saja
+    html += `
+      <p class="text-sm text-muted mb-12">Fungsi massa dasar untuk <strong>${step.m2Label}</strong> — <em>${escHTML(DS.GEJALA[step.m2Label][0])}</em>:</p>
+      ${buildMassTable(step.hasil)}
+    `;
+  } else {
+    // m1
+    html += `
+      <p class="text-sm text-muted mb-8" style="margin-top:4px"><strong style="color:var(--text-primary)">m₁ — Massa kumulatif langkah sebelumnya:</strong></p>
+      ${buildMassTable(step.m1)}
+    `;
+    // m2
+    html += `
+      <p class="text-sm text-muted mb-8" style="margin-top:16px"><strong style="color:var(--text-primary)">m₂ — Gejala ${step.m2Label}: <em>${escHTML(DS.GEJALA[step.m2Label][0])}</em></strong></p>
+      ${buildMassTable(step.m2)}
+    `;
+
+    // Tabel perkalian
+    html += `
+      <hr class="divider">
+      <p class="text-sm mb-8"><strong style="color:var(--text-primary)">📊 Tabel Perkalian m₁ × m₂</strong> <span class="text-muted">(setiap sel = irisan, produk nilai massa)</span></p>
+      ${buildMultiplicationMatrix(step.m1, step.m2, step.tabelPerkalian)}
+    `;
+
+    // K dan normalizer
+    html += `
+      <hr class="divider">
+      <p class="text-sm text-muted mb-12"><strong style="color:var(--text-primary)">Faktor Konflik &amp; Normalisasi:</strong></p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+        <div class="konflik-badge">⚡ K = ${konflikPct}%</div>
+        <div class="normalizer-badge">1 − K = ${normalizer}</div>
+      </div>
+
+      <div class="step-formula">
+        K = jumlah produk pasangan <span class="highlight">X ∩ Y = ∅</span><br>
+        m₁₂(Z) = <span class="highlight">Σ<sub>X∩Y=Z</sub> m₁(X)·m₂(Y)</span> / (1 − K)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= Σ ... / ${normalizer}
+      </div>
+
+      <p class="text-sm text-muted mb-8" style="margin-top:16px;"><strong style="color:var(--text-primary)">Hasil Kombinasi m₁₂ = m₁ ⊕ m₂:</strong></p>
+      ${buildMassTable(step.hasil)}
+    `;
+  }
+
+  html += `</div></div>`;
+
+  document.getElementById('sbs-content').innerHTML = html;
+
+  // Tampilkan tabel final jika ini langkah terakhir
+  const finalBox  = document.getElementById('sbs-final');
+  const finalTable= document.getElementById('sbs-final-table');
+  if (idx === steps.length - 1 && hasilDiagnosa.massaFinal) {
+    finalBox.style.display = 'block';
+    finalTable.innerHTML   = buildFinalSummary(hasilDiagnosa);
+  } else {
+    finalBox.style.display = 'none';
+  }
+}
+
+/** Ringkasan massa final dengan ranking */
+function buildFinalSummary(hasil) {
+  const { top, massaFinal } = hasil;
+  let html = '<div class="bar-list">';
+  const maxVal = Math.max(...top.map(t => t.nilai), 0.001);
+  top.forEach((item, i) => {
+    const pct = (item.nilai * 100).toFixed(4);
+    const widthPct = (item.nilai / maxVal * 100).toFixed(1);
+    const meta = PENYAKIT_META[item.kode];
+    html += `
+      <div class="bar-item">
+        <div class="bar-header">
+          <span class="bar-label">${meta.icon} ${item.kode} — ${item.nama}</span>
+          <span class="bar-val">${pct}%</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill ${i===0?'top-fill':''}" style="width:${widthPct}%"></div>
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  return html;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TAB 3: BASIS PENGETAHUAN
+// ─────────────────────────────────────────────────────────────
+
+/** Render 6 kartu penyakit */
+function renderDiseaseCards() {
+  const grid = document.getElementById('disease-grid');
+  grid.innerHTML = '';
+  for (const [kode, nama] of Object.entries(DS.PENYAKIT)) {
+    const meta = PENYAKIT_META[kode];
+    // Hitung jumlah gejala yang terkait
+    const gejalaTerkait = Object.entries(DS.GEJALA).filter(([, d]) => d[1].has(kode));
+
+    grid.innerHTML += `
+      <div class="disease-card">
+        <div class="dc-header">
+          <div class="dc-icon" style="background:${meta.bg};border:1px solid ${meta.border};">${meta.icon}</div>
+          <div>
+            <div class="dc-code" style="color:${meta.color}">${kode} · ${gejalaTerkait.length} gejala</div>
+            <div class="dc-name">${nama}</div>
+          </div>
+        </div>
+        <div class="dc-desc">${meta.desc}</div>
+        <div class="dc-solusi"><strong>Penanganan:</strong> ${DS.SOLUSI[kode]}</div>
+      </div>
+    `;
+  }
+}
+
+/** Render matriks gejala × penyakit */
+function renderKBMatrix() {
+  const pCodes = Object.keys(DS.PENYAKIT);
+
+  // Header
+  const headerRow = document.getElementById('kb-matrix-header');
+  headerRow.innerHTML = '<th>Kode</th><th style="min-width:200px">Nama Gejala</th>';
+  pCodes.forEach(p => {
+    const meta = PENYAKIT_META[p];
+    headerRow.innerHTML += `<th style="color:${meta.color}">${p}<br><span style="font-size:0.62rem;font-weight:400">${DS.PENYAKIT[p].split(' ')[0]}</span></th>`;
+  });
+  headerRow.innerHTML += '<th>Bobot</th>';
+
+  // Body
+  const tbody = document.getElementById('kb-matrix-body');
+  tbody.innerHTML = '';
+  for (const [kode, data] of Object.entries(DS.GEJALA)) {
+    const [nama, penyakitSet, belief] = data;
+    let row = `<tr>
+      <td class="gejala-code">${kode}</td>
+      <td class="gejala-label">${escHTML(nama)}</td>
+    `;
+    pCodes.forEach(p => {
+      if (penyakitSet.has(p)) {
+        const meta = PENYAKIT_META[p];
+        row += `<td><span class="dot-filled" style="background:${meta.bg};color:${meta.color};border-color:${meta.border}">${belief.toFixed(1)}</span></td>`;
+      } else {
+        row += `<td><span class="dot-empty">·</span></td>`;
+      }
+    });
+    row += `<td class="mono" style="color:var(--teal-400)">${belief.toFixed(1)}</td>`;
+    row += '</tr>';
+    tbody.innerHTML += row;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  UTILITAS
+// ─────────────────────────────────────────────────────────────
+
+/** Escape HTML untuk mencegah XSS */
+function escHTML(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+
+</body>
+</html>

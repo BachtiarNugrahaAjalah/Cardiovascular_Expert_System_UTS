@@ -10,21 +10,14 @@ Method (as in the journal):
     CF_combine   = CF_old + CF_symptom x (1 - CF_old)      (per disease)
     Percentage   = CF_combine x 100%
 
-Usage:
-    python expert_system.py              -- konsultasi interaktif
-    python expert_system.py --tests      -- jalankan semua test cases + simpan CSV
-    python expert_system.py --case 1     -- tampilkan trace lengkap satu kasus
-    python expert_system.py --auto N     -- jalankan N simulasi input otomatis
-
 EDUCATIONAL DEMO ONLY - not a medical device and not medical advice.
 """
+
 import csv
 import sys
 import random
 
-# ---------------------------------------------------------------
 # 1. KNOWLEDGE BASE  (journal Tables 1, 2, 3)
-# ---------------------------------------------------------------
 # Table 1 - user confidence scale
 USER_LEVELS = [
     (0.0, "Tidak Tahu / Tidak Yakin"),
@@ -130,7 +123,6 @@ SYMPTOMS = {
     "G29": "Pandangan kabur (Blurred vision)",
 }
 
-# Table 3 - expert weights: disease -> {symptom: CF_expert}
 RULES = {
     "P01": {"G01": 0.8, "G02": 0.6, "G03": 0.4, "G04": 0.6,
             "G05": 0.6, "G06": 0.4, "G07": 0.2, "G08": 0.4},
@@ -147,14 +139,9 @@ RULES = {
             "G07": 0.4, "G04": 0.6},
 }
 
-
-# ---------------------------------------------------------------
 # 2. INFERENCE ENGINE
-# ---------------------------------------------------------------
 def combine(cf_old: float, cf_new: float) -> float:
-    """Journal formula: CF_old + CF_symptom * (1 - CF_old)."""
     return cf_old + cf_new * (1 - cf_old)
-
 
 def diagnose(evidence: dict):
     """
@@ -179,7 +166,6 @@ def diagnose(evidence: dict):
             trace[pid] = steps
     ranking.sort(key=lambda x: x[1], reverse=True)
     return ranking, trace
-
 
 def interpret(ranking):
     """Interpretasi hasil diagnosis dengan tingkat kepercayaan."""
@@ -208,12 +194,7 @@ def interpret(ranking):
         note += " AMBIGU: Perbedaan dengan kandidat kedua < 10 poin — diperlukan data gejala lebih lanjut."
     return note
 
-
 def diagnose_as_dict(evidence: dict) -> dict:
-    """
-    API-friendly version of diagnose for the Flask web interface.
-    Returns a structured dict with all relevant info.
-    """
     ranking, trace = diagnose(evidence)
 
     results = []
@@ -250,7 +231,6 @@ def diagnose_as_dict(evidence: dict) -> dict:
         "evidence_count": sum(1 for v in evidence.values() if v > 0),
     }
 
-
 def get_knowledge_base() -> dict:
     """Return the full knowledge base as a dict for the web interface."""
     return {
@@ -261,10 +241,7 @@ def get_knowledge_base() -> dict:
         "user_levels": [{"value": v, "label": l} for v, l in USER_LEVELS],
     }
 
-
-# ---------------------------------------------------------------
 # 3. AUTO-INPUT SIMULATOR (generates uncertainty scenarios)
-# ---------------------------------------------------------------
 def generate_auto_scenario(seed=None, mode="random"):
     """
     Generate a synthetic patient scenario for testing.
@@ -338,7 +315,6 @@ def generate_auto_scenario(seed=None, mode="random"):
 
     return evidence, meta
 
-
 def run_auto_simulations(n=20, output_csv="auto_simulation_results.csv"):
     """
     Run N automatic simulations across all modes and save to CSV.
@@ -399,10 +375,7 @@ def run_auto_simulations(n=20, output_csv="auto_simulation_results.csv"):
     print(f"{'='*65}\n")
     return rows
 
-
-# ---------------------------------------------------------------
 # 4. TEST DATA  (synthetic)
-# ---------------------------------------------------------------
 TEST_CASES = [
     {"id": 1, "name": "Contoh Jurnal (Tabel 4)", "expect": "P03",
      "desc": "Replikasi perhitungan manual jurnal, diharapkan Katup Jantung ~83.8%",
@@ -438,10 +411,7 @@ TEST_CASES = [
      "ev": {"G01": 0.0, "G06": 0.0, "G13": 0.0}},
 ]
 
-
-# ---------------------------------------------------------------
 # 5. OUTPUT HELPERS
-# ---------------------------------------------------------------
 def print_result(ev, show_trace=True):
     ranking, trace = diagnose(ev)
     if show_trace:
@@ -457,7 +427,6 @@ def print_result(ev, show_trace=True):
         print(f"    {DISEASES[pid]:<55} {cf * 100:6.2f}%")
     print("  " + interpret(ranking))
     return ranking
-
 
 def run_tests():
     rows, passed = [], 0
@@ -490,7 +459,6 @@ def run_tests():
         w.writerows(rows)
     print("Tersimpan: test_results.csv")
 
-
 def interactive():
     print("SISTEM PAKAR KARDIOVASKULAR (Certainty Factor)")
     print("Demo edukatif — bukan saran medis.\n")
@@ -510,7 +478,6 @@ def interactive():
     print_result(ev)
     print("\nSilakan konsultasi ke dokter spesialis jantung untuk diagnosis yang sesungguhnya.")
 
-
 if __name__ == "__main__":
     args = sys.argv[1:]
     if "--tests" in args:
@@ -525,4 +492,4 @@ if __name__ == "__main__":
         print(f"Kasus {n}: {tc['name']} - {tc['desc']}")
         print_result(tc["ev"])
     else:
-        interactive()
+        interactive()
