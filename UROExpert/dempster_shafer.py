@@ -72,7 +72,6 @@ def mass_gejala(kode):
     _, penyakit, bel = GEJALA[kode]
     return {frozenset(penyakit): bel, THETA: round(1 - bel, 10)}
 
-
 # ---------------------------------------------------------------
 # 4. ATURAN KOMBINASI DEMPSTER
 #    m3(Z) = Σ m1(X)·m2(Y) untuk X∩Y = Z  /  (1 - K)
@@ -100,10 +99,8 @@ def kombinasi(m1, m2):
 def belief(m, a):
     return sum(v for b, v in m.items() if b <= a)
 
-
 def plausibility(m, a):
     return sum(v for b, v in m.items() if b & a)
-
 
 # ---------------------------------------------------------------
 # 6. PROSES DIAGNOSA
